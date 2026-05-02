@@ -2,17 +2,17 @@ import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 
 export default function EnvironmentalImpact({ plant }) {
-  const impact = plant.environmentalImpact || {
-    carbonOffset: 0,
-    oxygenProduced: 0,
-    treesEquivalent: 0.01,
+  const raw = plant.environmentalImpact || {};
+  const impact = {
+    carbonOffset: raw.carbonOffset ?? 0,
+    oxygenProduced: raw.oxygenProduced ?? 0,
+    treesEquivalent: raw.treesEquivalent ?? 0.01,
   };
 
   const getProjectedImpact = () => {
-    // Project impact over 1 year if plant reaches full growth
-    const fullGrowthMultiplier = 10 / Math.max(plant.growthStage, 1);
+    const fullGrowthMultiplier = 10 / Math.max(plant.growthStage ?? 0, 1);
     return {
-      carbonOffset: impact.carbonOffset * fullGrowthMultiplier * 18.25, // 365/20 days
+      carbonOffset: impact.carbonOffset * fullGrowthMultiplier * 18.25,
       oxygenProduced: impact.oxygenProduced * fullGrowthMultiplier * 18.25,
     };
   };

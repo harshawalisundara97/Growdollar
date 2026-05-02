@@ -37,7 +37,7 @@ export default function SignUpScreen({ navigation }) {
       return;
     }
 
-    if (password !== confirmPassword) {
+    if (password.trim() !== confirmPassword.trim()) {
       Alert.alert('Error', 'Passwords do not match');
       return;
     }

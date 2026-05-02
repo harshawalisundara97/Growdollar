@@ -8,6 +8,8 @@ import {
 } from 'react-native';
 
 export default function PlantHealthMetrics({ plant, onUpdateHealth }) {
+  if (!plant) return null;
+
   const health = plant.healthMetrics || {
     water: 100,
     sunlight: 100,

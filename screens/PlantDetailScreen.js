@@ -19,17 +19,20 @@ import EnvironmentalImpact from '../components/EnvironmentalImpact';
 const { width } = Dimensions.get('window');
 
 export default function PlantDetailScreen({ route, navigation }) {
-  const { plant: initialPlant } = route.params;
+  const { plant: initialPlant } = route.params || {};
   const { plants, deletePlant, updatePlantHealth, addPlantPhoto } = usePlants();
-  const [plant, setPlant] = useState(initialPlant);
+  const [plant, setPlant] = useState(initialPlant || null);
+  const plantId = initialPlant?.id;
 
   useEffect(() => {
-    // Update plant data from context
-    const updatedPlant = plants.find((p) => p.id === plant.id);
+    if (!plantId) return;
+    const updatedPlant = plants.find((p) => p.id === plantId);
     if (updatedPlant) {
       setPlant(updatedPlant);
+    } else {
+      navigation.goBack();
     }
-  }, [plants, plant.id]);
+  }, [plants, plantId, navigation]);
 
   const handleDelete = () => {
     Alert.alert(
@@ -40,10 +43,7 @@ export default function PlantDetailScreen({ route, navigation }) {
         {
           text: 'Delete',
           style: 'destructive',
-          onPress: async () => {
-            await deletePlant(plant.id);
-            navigation.goBack();
-          },
+          onPress: () => deletePlant(plant.id),
         },
       ]
     );
@@ -85,6 +85,8 @@ export default function PlantDetailScreen({ route, navigation }) {
     if (hoursRemaining <= 0) return 'Growing now...';
     return `${hoursRemaining.toFixed(1)} hours`;
   };
+
+  if (!plant) return null;
 
   return (
     <ScrollView style={styles.container}>

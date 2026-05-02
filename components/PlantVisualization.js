@@ -7,7 +7,7 @@ export default function PlantVisualization({ plantType, growthStage, color, size
 
   // Growth stages: 0-10
   const getPlantVisual = () => {
-    const stage = Math.min(growthStage, 10);
+    const stage = Math.min(growthStage ?? 0, 10);
     
     // Seed stage (0)
     if (stage === 0) {

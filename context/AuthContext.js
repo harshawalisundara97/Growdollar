@@ -1,4 +1,4 @@
-import React, { createContext, useState, useEffect, useContext } from 'react';
+import React, { createContext, useState, useEffect, useContext, useCallback } from 'react';
 import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
@@ -24,12 +24,13 @@ export const AuthProvider = ({ children }) => {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Listen for auth state changes
+    let cancelled = false;
+
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
-        // Get user data from Firestore
         try {
           const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
+          if (cancelled) return;
           if (userDoc.exists()) {
             const userData = userDoc.data();
             setUser({
@@ -39,7 +40,6 @@ export const AuthProvider = ({ children }) => {
               ...userData,
             });
           } else {
-            // User document doesn't exist, create it
             const userData = {
               uid: firebaseUser.uid,
               email: firebaseUser.email,
@@ -47,11 +47,12 @@ export const AuthProvider = ({ children }) => {
               createdAt: new Date().toISOString(),
             };
             await setDoc(doc(db, 'users', firebaseUser.uid), userData);
+            if (cancelled) return;
             setUser(userData);
           }
         } catch (error) {
           console.error('Error fetching user data:', error);
-          // Fallback to basic user info
+          if (cancelled) return;
           setUser({
             uid: firebaseUser.uid,
             email: firebaseUser.email,
@@ -59,12 +60,15 @@ export const AuthProvider = ({ children }) => {
           });
         }
       } else {
-        setUser(null);
+        if (!cancelled) setUser(null);
       }
-      setIsLoading(false);
+      if (!cancelled) setIsLoading(false);
     });
 
-    return () => unsubscribe();
+    return () => {
+      cancelled = true;
+      unsubscribe();
+    };
   }, []);
 
   const login = async (email, password) => {
@@ -154,15 +158,14 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const logout = async () => {
+  const logout = useCallback(async () => {
     try {
       await signOut(auth);
-      // Auth state listener will handle clearing the user
     } catch (error) {
       console.error('Logout error:', error);
       throw error;
     }
-  };
+  }, []);
 
   const value = {
     user,

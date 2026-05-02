@@ -46,11 +46,57 @@ export const PlantProvider = ({ children }) => {
   // Update plant growth every minute
   useEffect(() => {
     const interval = setInterval(() => {
-      updatePlantGrowth();
-    }, 60000); // Update every minute
+      setPlants(prevPlants => {
+        const now = Date.now();
+        const updatedPlants = prevPlants.map(plant => {
+          const elapsed = now - (plant.purchasedAt || now);
+          const hoursElapsed = elapsed / (1000 * 60 * 60);
+          const newGrowthStage = Math.min(Math.floor(hoursElapsed / 2), 10);
+
+          const growthHistory = plant.growthHistory || [{ stage: 0, timestamp: plant.purchasedAt }];
+          const lastStage = growthHistory[growthHistory.length - 1]?.stage || 0;
+          if (newGrowthStage > lastStage) {
+            growthHistory.push({ stage: newGrowthStage, timestamp: now });
+          }
+
+          const carbonPerStage = {
+            'Tree': 2.5, 'Sunflower': 0.1, 'Rose': 0.15,
+            'Cactus': 0.2, 'Tulip': 0.1, 'Cherry Blossom': 1.0,
+          };
+          const baseCarbon = carbonPerStage[plant.type] || 0.1;
+          const carbonOffset = (baseCarbon * newGrowthStage) / 10;
+          const environmentalImpact = {
+            carbonOffset: parseFloat(carbonOffset.toFixed(2)),
+            oxygenProduced: parseFloat((carbonOffset * 0.73).toFixed(2)),
+            treesEquivalent: parseFloat((carbonOffset / 22).toFixed(4)),
+          };
+
+          const hoursSinceWater = (now - (plant.healthMetrics?.lastWatered || plant.purchasedAt)) / (1000 * 60 * 60);
+          const hoursSinceSunlight = (now - (plant.healthMetrics?.lastSunlight || plant.purchasedAt)) / (1000 * 60 * 60);
+          const hoursSinceCare = (now - (plant.healthMetrics?.lastCared || plant.purchasedAt)) / (1000 * 60 * 60);
+
+          return {
+            ...plant,
+            growthStage: newGrowthStage,
+            growthHistory,
+            environmentalImpact,
+            healthMetrics: {
+              water: Math.max(0, (plant.healthMetrics?.water || 100) - hoursSinceWater * 2),
+              sunlight: Math.max(0, (plant.healthMetrics?.sunlight || 100) - hoursSinceSunlight * 1.5),
+              care: Math.max(0, (plant.healthMetrics?.care || 100) - hoursSinceCare * 1),
+              lastWatered: plant.healthMetrics?.lastWatered || plant.purchasedAt,
+              lastSunlight: plant.healthMetrics?.lastSunlight || plant.purchasedAt,
+              lastCared: plant.healthMetrics?.lastCared || plant.purchasedAt,
+            },
+          };
+        });
+        savePlants(updatedPlants);
+        return updatedPlants;
+      });
+    }, 60000);
 
     return () => clearInterval(interval);
-  }, [plants]);
+  }, []);
 
   const loadPlants = async () => {
     try {
@@ -60,29 +106,31 @@ export const PlantProvider = ({ children }) => {
         // Update growth based on time elapsed and ensure all new fields exist
         const updatedPlants = parsedPlants.map(plant => {
           const now = Date.now();
-          const elapsed = now - plant.purchasedAt;
+          const purchasedAt = plant.purchasedAt || now;
+          const elapsed = now - purchasedAt;
           const hoursElapsed = elapsed / (1000 * 60 * 60);
           const growthStage = Math.min(Math.floor(hoursElapsed / 2), 10);
-          
+
           // Ensure backward compatibility with old plant data
           const plantWithDefaults = {
             ...plant,
+            purchasedAt,
             location: plant.location || null,
             photos: plant.photos || [],
             healthMetrics: plant.healthMetrics || {
               water: 100,
               sunlight: 100,
               care: 100,
-              lastWatered: plant.purchasedAt,
-              lastSunlight: plant.purchasedAt,
-              lastCared: plant.purchasedAt,
+              lastWatered: purchasedAt,
+              lastSunlight: purchasedAt,
+              lastCared: purchasedAt,
             },
             environmentalImpact: plant.environmentalImpact || {
               carbonOffset: 0,
               oxygenProduced: 0,
               treesEquivalent: 0.01,
             },
-            growthHistory: plant.growthHistory || [{ stage: 0, timestamp: plant.purchasedAt }],
+            growthHistory: plant.growthHistory || [{ stage: 0, timestamp: purchasedAt }],
           };
 
           // Update environmental impact
@@ -185,7 +233,11 @@ export const PlantProvider = ({ children }) => {
     };
     const updatedPlants = [...plants, newPlant];
     setPlants(updatedPlants);
-    await savePlants(updatedPlants);
+    try {
+      await savePlants(updatedPlants);
+    } catch (error) {
+      console.error('Failed to persist new plant:', error);
+    }
     return newPlant;
   };
 

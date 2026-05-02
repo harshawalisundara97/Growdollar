@@ -169,11 +169,13 @@ export default function PhotoGallery({ plant, onAddPhoto }) {
             style={styles.modalBackground}
             onPress={() => setSelectedPhoto(null)}
           >
-            <Image
-              source={{ uri: selectedPhoto?.uri }}
-              style={styles.modalImage}
-              resizeMode="contain"
-            />
+            {selectedPhoto && (
+              <Image
+                source={{ uri: selectedPhoto.uri }}
+                style={styles.modalImage}
+                resizeMode="contain"
+              />
+            )}
             <View style={styles.modalInfo}>
               <Text style={styles.modalStage}>
                 {selectedPhoto && getStageName(selectedPhoto.growthStage)}

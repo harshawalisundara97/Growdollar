@@ -4,8 +4,11 @@ import PlantVisualization from './PlantVisualization';
 
 export default function PlantCard({ plant, navigation }) {
   const getGrowthStageName = () => {
-    const stages = ['Seed', 'Sprout', 'Young', 'Growing', 'Budding', 'Flowering'];
-    return stages[Math.min(Math.floor(plant.growthStage / 2), 5)];
+    const stages = [
+      'Seed', 'Sprout', 'Young', 'Growing', 'Budding',
+      'Flowering', 'Maturing', 'Full Bloom', 'Mature', 'Fully Grown', 'Masterpiece',
+    ];
+    return stages[Math.min(plant.growthStage ?? 0, 10)];
   };
 
   return (

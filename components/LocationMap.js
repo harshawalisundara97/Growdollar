@@ -5,7 +5,7 @@ import MapView, { Marker } from 'react-native-maps';
 export default function LocationMap({ plant }) {
   const location = plant.location;
 
-  if (!location || !location.latitude || !location.longitude) {
+  if (!location || location.latitude == null || location.longitude == null) {
     return (
       <View style={styles.container}>
         <Text style={styles.title}>📍 Location</Text>

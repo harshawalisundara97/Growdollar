@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -24,6 +24,11 @@ export default function PurchaseScreen({ navigation }) {
   const [selectedPlant, setSelectedPlant] = useState(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const { addPlant } = usePlants();
+  const isMounted = useRef(true);
+
+  useEffect(() => {
+    return () => { isMounted.current = false; };
+  }, []);
 
   const getCurrentLocation = async () => {
     try {
@@ -112,8 +117,8 @@ export default function PurchaseScreen({ navigation }) {
         throw new Error('Failed to create plant');
       }
 
-      setIsProcessing(false);
-      
+      if (isMounted.current) setIsProcessing(false);
+
       Alert.alert(
         'Purchase Successful!',
         `Your ${selectedPlant.name} has been planted! Watch it grow!${location ? '\n\nLocation saved successfully.' : '\n\nNote: Location was not saved.'}`,
@@ -128,7 +133,7 @@ export default function PurchaseScreen({ navigation }) {
       );
     } catch (error) {
       console.error('Purchase error:', error);
-      setIsProcessing(false);
+      if (isMounted.current) setIsProcessing(false);
       Alert.alert(
         'Purchase Failed', 
         error.message || 'Failed to purchase plant. Please try again.'

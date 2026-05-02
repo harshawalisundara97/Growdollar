@@ -25,7 +25,7 @@ export default function GrowthTimeline({ plant }) {
   const getTimeLabel = (timestamp) => {
     const date = new Date(timestamp);
     const now = Date.now();
-    const hoursAgo = (now - timestamp) / (1000 * 60 * 60);
+    const hoursAgo = (now - new Date(timestamp).getTime()) / (1000 * 60 * 60);
     
     if (hoursAgo < 1) return 'Just now';
     if (hoursAgo < 24) return `${Math.floor(hoursAgo)}h ago`;
