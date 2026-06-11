@@ -1,8 +1,51 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withSpring,
+  withTiming,
+  withDelay,
+} from 'react-native-reanimated';
 import PlantVisualization from './PlantVisualization';
 
-export default function PlantCard({ plant, navigation }) {
+export default function PlantCard({ plant, navigation, animIndex = 0 }) {
+  const [barWidth, setBarWidth] = useState(0);
+
+  const entryY = useSharedValue(30);
+  const entryOp = useSharedValue(0);
+  const pressScale = useSharedValue(1);
+  const barFill = useSharedValue(0);
+
+  useEffect(() => {
+    const delay = animIndex * 70;
+    entryY.value = withDelay(delay, withSpring(0, { damping: 14, stiffness: 120 }));
+    entryOp.value = withDelay(delay, withTiming(1, { duration: 300 }));
+  }, []);
+
+  useEffect(() => {
+    if (barWidth > 0) {
+      const target = barWidth * Math.min((plant.growthStage ?? 0) / 10, 1);
+      barFill.value = withDelay(
+        animIndex * 70 + 200,
+        withTiming(target, { duration: 600 })
+      );
+    }
+  }, [barWidth]);
+
+  const entryStyle = useAnimatedStyle(() => ({
+    opacity: entryOp.value,
+    transform: [{ translateY: entryY.value }],
+  }));
+
+  const pressStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: pressScale.value }],
+  }));
+
+  const barFillStyle = useAnimatedStyle(() => ({
+    width: barFill.value,
+  }));
+
   const getGrowthStageName = () => {
     const stages = [
       'Seed', 'Sprout', 'Young', 'Growing', 'Budding',
@@ -12,37 +55,44 @@ export default function PlantCard({ plant, navigation }) {
   };
 
   return (
-    <TouchableOpacity
-      style={styles.card}
-      onPress={() => navigation.navigate('PlantDetail', { plant })}
-    >
-      <View style={styles.plantVisual}>
-        <PlantVisualization
-          plantType={plant.type}
-          growthStage={plant.growthStage}
-          color={plant.color}
-          size={100}
-        />
-      </View>
-      <Text style={styles.plantName} numberOfLines={1}>
-        {plant.name}
-      </Text>
-      <Text style={styles.growthStage}>{getGrowthStageName()}</Text>
-      <View style={styles.progressBar}>
+    <Animated.View style={[entryStyle, pressStyle]}>
+      <TouchableOpacity
+        style={styles.card}
+        onPress={() => navigation.navigate('PlantDetail', { plant })}
+        onPressIn={() => {
+          pressScale.value = withSpring(0.95, { damping: 15, stiffness: 300 });
+        }}
+        onPressOut={() => {
+          pressScale.value = withSpring(1, { damping: 15, stiffness: 300 });
+        }}
+        activeOpacity={1}
+      >
+        <View style={styles.plantVisual}>
+          <PlantVisualization
+            plantType={plant.type}
+            growthStage={plant.growthStage}
+            color={plant.color}
+            size={100}
+          />
+        </View>
+        <Text style={styles.plantName} numberOfLines={1}>
+          {plant.name}
+        </Text>
+        <Text style={styles.growthStage}>{getGrowthStageName()}</Text>
         <View
-          style={[
-            styles.progressFill,
-            { width: `${Math.min((plant.growthStage / 10) * 100, 100)}%` },
-          ]}
-        />
-      </View>
-    </TouchableOpacity>
+          style={styles.progressBar}
+          onLayout={(e) => setBarWidth(e.nativeEvent.layout.width)}
+        >
+          <Animated.View style={[styles.progressFill, barFillStyle]} />
+        </View>
+      </TouchableOpacity>
+    </Animated.View>
   );
 }
 
 const styles = StyleSheet.create({
   card: {
-    width: '48%',
+    width: '100%',
     backgroundColor: '#fff',
     borderRadius: 15,
     padding: 15,
@@ -85,4 +135,3 @@ const styles = StyleSheet.create({
     borderRadius: 3,
   },
 });
-

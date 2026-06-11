@@ -12,8 +12,8 @@ export default function EnvironmentalImpact({ plant }) {
   const getProjectedImpact = () => {
     const fullGrowthMultiplier = 10 / Math.max(plant.growthStage ?? 0, 1);
     return {
-      carbonOffset: impact.carbonOffset * fullGrowthMultiplier * 18.25,
-      oxygenProduced: impact.oxygenProduced * fullGrowthMultiplier * 18.25,
+      carbonOffset: impact.carbonOffset * fullGrowthMultiplier,
+      oxygenProduced: impact.oxygenProduced * fullGrowthMultiplier,
     };
   };
 

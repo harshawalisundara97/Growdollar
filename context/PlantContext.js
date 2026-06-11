@@ -53,7 +53,7 @@ export const PlantProvider = ({ children }) => {
           const hoursElapsed = elapsed / (1000 * 60 * 60);
           const newGrowthStage = Math.min(Math.floor(hoursElapsed / 2), 10);
 
-          const growthHistory = plant.growthHistory || [{ stage: 0, timestamp: plant.purchasedAt }];
+          const growthHistory = [...(plant.growthHistory || [{ stage: 0, timestamp: plant.purchasedAt }])];
           const lastStage = growthHistory[growthHistory.length - 1]?.stage || 0;
           if (newGrowthStage > lastStage) {
             growthHistory.push({ stage: newGrowthStage, timestamp: now });
@@ -71,23 +71,11 @@ export const PlantProvider = ({ children }) => {
             treesEquivalent: parseFloat((carbonOffset / 22).toFixed(4)),
           };
 
-          const hoursSinceWater = (now - (plant.healthMetrics?.lastWatered || plant.purchasedAt)) / (1000 * 60 * 60);
-          const hoursSinceSunlight = (now - (plant.healthMetrics?.lastSunlight || plant.purchasedAt)) / (1000 * 60 * 60);
-          const hoursSinceCare = (now - (plant.healthMetrics?.lastCared || plant.purchasedAt)) / (1000 * 60 * 60);
-
           return {
             ...plant,
             growthStage: newGrowthStage,
             growthHistory,
             environmentalImpact,
-            healthMetrics: {
-              water: Math.max(0, (plant.healthMetrics?.water || 100) - hoursSinceWater * 2),
-              sunlight: Math.max(0, (plant.healthMetrics?.sunlight || 100) - hoursSinceSunlight * 1.5),
-              care: Math.max(0, (plant.healthMetrics?.care || 100) - hoursSinceCare * 1),
-              lastWatered: plant.healthMetrics?.lastWatered || plant.purchasedAt,
-              lastSunlight: plant.healthMetrics?.lastSunlight || plant.purchasedAt,
-              lastCared: plant.healthMetrics?.lastCared || plant.purchasedAt,
-            },
           };
         });
         savePlants(updatedPlants);
@@ -161,49 +149,31 @@ export const PlantProvider = ({ children }) => {
   };
 
   const updatePlantGrowth = () => {
-    const updatedPlants = plants.map(plant => {
+    setPlants(prevPlants => {
       const now = Date.now();
-      const elapsed = now - plant.purchasedAt;
-      const hoursElapsed = elapsed / (1000 * 60 * 60);
-      const newGrowthStage = Math.min(Math.floor(hoursElapsed / 2), 10);
-      
-      // Add to growth history if stage changed
-      const growthHistory = plant.growthHistory || [{ stage: 0, timestamp: plant.purchasedAt }];
-      const lastStage = growthHistory[growthHistory.length - 1]?.stage || 0;
-      
-      if (newGrowthStage > lastStage) {
-        growthHistory.push({ stage: newGrowthStage, timestamp: now });
-      }
+      const updatedPlants = prevPlants.map(plant => {
+        const elapsed = now - (plant.purchasedAt || now);
+        const hoursElapsed = elapsed / (1000 * 60 * 60);
+        const newGrowthStage = Math.min(Math.floor(hoursElapsed / 2), 10);
 
-      // Update environmental impact based on growth
-      const environmentalImpact = updateEnvironmentalImpact({ ...plant, growthStage: newGrowthStage });
+        const growthHistory = [...(plant.growthHistory || [{ stage: 0, timestamp: plant.purchasedAt }])];
+        const lastStage = growthHistory[growthHistory.length - 1]?.stage || 0;
+        if (newGrowthStage > lastStage) {
+          growthHistory.push({ stage: newGrowthStage, timestamp: now });
+        }
 
-      // Update health metrics (decrease over time if not cared for)
-      const hoursSinceWater = (now - (plant.healthMetrics?.lastWatered || plant.purchasedAt)) / (1000 * 60 * 60);
-      const hoursSinceSunlight = (now - (plant.healthMetrics?.lastSunlight || plant.purchasedAt)) / (1000 * 60 * 60);
-      const hoursSinceCare = (now - (plant.healthMetrics?.lastCared || plant.purchasedAt)) / (1000 * 60 * 60);
+        const environmentalImpact = updateEnvironmentalImpact({ ...plant, growthStage: newGrowthStage });
 
-      const newWater = Math.max(0, (plant.healthMetrics?.water || 100) - hoursSinceWater * 2);
-      const newSunlight = Math.max(0, (plant.healthMetrics?.sunlight || 100) - hoursSinceSunlight * 1.5);
-      const newCare = Math.max(0, (plant.healthMetrics?.care || 100) - hoursSinceCare * 1);
-
-      return {
-        ...plant,
-        growthStage: newGrowthStage,
-        growthHistory,
-        environmentalImpact,
-        healthMetrics: {
-          water: newWater,
-          sunlight: newSunlight,
-          care: newCare,
-          lastWatered: plant.healthMetrics?.lastWatered || plant.purchasedAt,
-          lastSunlight: plant.healthMetrics?.lastSunlight || plant.purchasedAt,
-          lastCared: plant.healthMetrics?.lastCared || plant.purchasedAt,
-        },
-      };
+        return {
+          ...plant,
+          growthStage: newGrowthStage,
+          growthHistory,
+          environmentalImpact,
+        };
+      });
+      savePlants(updatedPlants);
+      return updatedPlants;
     });
-    setPlants(updatedPlants);
-    savePlants(updatedPlants);
   };
 
   const addPlant = async (plantType, color, location = null) => {
@@ -241,7 +211,10 @@ export const PlantProvider = ({ children }) => {
     return newPlant;
   };
 
+  const METRIC_TIMESTAMP_KEYS = { water: 'lastWatered', sunlight: 'lastSunlight', care: 'lastCared' };
+
   const updatePlantHealth = async (plantId, metric, value) => {
+    const timestampKey = METRIC_TIMESTAMP_KEYS[metric];
     const updatedPlants = plants.map(plant => {
       if (plant.id === plantId) {
         return {
@@ -249,14 +222,18 @@ export const PlantProvider = ({ children }) => {
           healthMetrics: {
             ...plant.healthMetrics,
             [metric]: Math.min(100, Math.max(0, value)),
-            [`last${metric.charAt(0).toUpperCase() + metric.slice(1)}`]: Date.now(),
+            [timestampKey]: Date.now(),
           },
         };
       }
       return plant;
     });
     setPlants(updatedPlants);
-    await savePlants(updatedPlants);
+    try {
+      await savePlants(updatedPlants);
+    } catch (error) {
+      console.error('Error saving health update:', error);
+    }
   };
 
   const addPlantPhoto = async (plantId, photoUri) => {
@@ -275,7 +252,11 @@ export const PlantProvider = ({ children }) => {
       return plant;
     });
     setPlants(updatedPlants);
-    await savePlants(updatedPlants);
+    try {
+      await savePlants(updatedPlants);
+    } catch (error) {
+      console.error('Error saving photo:', error);
+    }
   };
 
   const deletePlant = async (plantId) => {

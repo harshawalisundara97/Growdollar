@@ -48,12 +48,22 @@ Plant data is **not** synced to Firestore — it stays in `AsyncStorage` on the 
 - Health metrics (water, sunlight, care) each decay over time and can be restored by the user
 - Environmental impact (CO₂ offset, oxygen) is calculated per plant type and stage
 
+### Plant Data Shape
+
+Each plant object stored in `AsyncStorage` has: `id`, `type`, `color`, `name`, `purchasedAt` (Unix ms), `growthStage` (0–10), `growthHistory` (array of `{stage, timestamp}`), `healthMetrics` (`water`, `sunlight`, `care` 0–100 + `lastWatered/lastSunlight/lastCared` timestamps), `environmentalImpact` (`carbonOffset`, `oxygenProduced`, `treesEquivalent`), `location` (`latitude`, `longitude`, `address`), `photos` (array of `{uri, timestamp, growthStage}`).
+
+Health metrics decay rates: water −2%/hr, sunlight −1.5%/hr, care −1%/hr. Carbon offset rates per growth stage: Tree 2.5 kg, Cherry Blossom 1.0 kg, Cactus 0.2 kg, Rose 0.15 kg, Sunflower/Tulip 0.1 kg. Oxygen = carbonOffset × 0.73; treesEquivalent = carbonOffset / 22.
+
 ### Components
 
-Reusable components in `components/` are used exclusively inside `PlantDetailScreen`:
-- `PlantVisualization` — SVG-based plant rendering that reflects growth stage
-- `GrowthTimeline` — horizontal 11-stage scrollable timeline
-- `PlantHealthMetrics` — water/sunlight/care progress bars with action buttons
-- `PhotoGallery` — camera/gallery photo capture via `expo-image-picker`
-- `LocationMap` — `react-native-maps` showing purchase location with reverse geocoding
-- `EnvironmentalImpact` — carbon offset and oxygen production metrics
+- `PlantCard` — plant summary card used in `HomeScreen` (FlatList)
+- `PlantVisualization` — SVG-based plant rendering that reflects growth stage (used in `PlantDetailScreen`)
+- `GrowthTimeline` — horizontal 11-stage scrollable timeline (used in `PlantDetailScreen`)
+- `PlantHealthMetrics` — water/sunlight/care progress bars with action buttons (used in `PlantDetailScreen`)
+- `PhotoGallery` — camera/gallery photo capture via `expo-image-picker` (used in `PlantDetailScreen`)
+- `LocationMap` — `react-native-maps` showing purchase location with reverse geocoding (used in `PlantDetailScreen`)
+- `EnvironmentalImpact` — carbon offset and oxygen production metrics (used in `PlantDetailScreen`)
+
+### Payment
+
+Purchase is **simulated** (1.5 s fake delay, no real charge). To add real payments, replace the `await new Promise(resolve => setTimeout(resolve, 1500))` block in `PurchaseScreen.js` with Stripe (`@stripe/stripe-react-native`), `expo-in-app-purchases`, or a similar provider.

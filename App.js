@@ -18,6 +18,7 @@ const AuthStack = () => {
     <Stack.Navigator
       screenOptions={{
         headerShown: false,
+        animation: 'fade',
       }}
     >
       <Stack.Screen name="Login" component={LoginScreen} />
@@ -39,17 +40,17 @@ const AppStack = () => {
         },
       }}
     >
-      <Stack.Screen 
-        name="Home" 
+      <Stack.Screen
+        name="Home"
         component={HomeScreen}
       />
-      <Stack.Screen 
-        name="Purchase" 
+      <Stack.Screen
+        name="Purchase"
         component={PurchaseScreen}
-        options={{ title: 'Buy a Plant' }}
+        options={{ title: 'Buy a Plant', animation: 'slide_from_bottom' }}
       />
-      <Stack.Screen 
-        name="PlantDetail" 
+      <Stack.Screen
+        name="PlantDetail"
         component={PlantDetailScreen}
         options={{ title: 'Plant Details' }}
       />
@@ -93,4 +94,3 @@ const styles = StyleSheet.create({
     backgroundColor: '#F5F5F5',
   },
 });
-

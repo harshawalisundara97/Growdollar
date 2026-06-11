@@ -50,7 +50,7 @@ export default function PlantDetailScreen({ route, navigation }) {
   };
 
   const getGrowthPercentage = () => {
-    return Math.min((plant.growthStage / 10) * 100, 100);
+    return Math.min(((plant.growthStage ?? 0) / 10) * 100, 100);
   };
 
   const getGrowthStageName = () => {
@@ -67,7 +67,7 @@ export default function PlantDetailScreen({ route, navigation }) {
       'Fully Grown',
       'Masterpiece',
     ];
-    return stages[Math.min(plant.growthStage, 10)];
+    return stages[Math.min(plant.growthStage ?? 0, 10)];
   };
 
   const getHoursSincePurchase = () => {

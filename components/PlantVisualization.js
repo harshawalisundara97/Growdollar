@@ -1,14 +1,39 @@
-import React from 'react';
-import { View, StyleSheet } from 'react-native';
+import React, { useRef, useEffect } from 'react';
+import { View, StyleSheet, Animated } from 'react-native';
 import Svg, { Circle, Ellipse, Path, G } from 'react-native-svg';
 
 export default function PlantVisualization({ plantType, growthStage, color, size }) {
   const scale = size / 200; // Base size is 200
 
+  const breathAnim = useRef(new Animated.Value(1)).current;
+  const fadeAnim = useRef(new Animated.Value(1)).current;
+  const prevStage = useRef(growthStage);
+
+  useEffect(() => {
+    const breathing = Animated.loop(
+      Animated.sequence([
+        Animated.timing(breathAnim, { toValue: 1.04, duration: 2000, useNativeDriver: true }),
+        Animated.timing(breathAnim, { toValue: 1, duration: 2000, useNativeDriver: true }),
+      ])
+    );
+    breathing.start();
+    return () => breathing.stop();
+  }, []);
+
+  useEffect(() => {
+    if (prevStage.current !== growthStage) {
+      Animated.sequence([
+        Animated.timing(fadeAnim, { toValue: 0, duration: 200, useNativeDriver: true }),
+        Animated.timing(fadeAnim, { toValue: 1, duration: 300, useNativeDriver: true }),
+      ]).start();
+      prevStage.current = growthStage;
+    }
+  }, [growthStage]);
+
   // Growth stages: 0-10
   const getPlantVisual = () => {
     const stage = Math.min(growthStage ?? 0, 10);
-    
+
     // Seed stage (0)
     if (stage === 0) {
       return (
@@ -52,14 +77,12 @@ export default function PlantVisualization({ plantType, growthStage, color, size
       const leafSize = 8 * scale + (stage - 3) * 3 * scale;
       return (
         <G>
-          {/* Stem */}
           <Path
             d={`M ${100 * scale} ${180 * scale} L ${100 * scale} ${180 * scale - stemHeight}`}
             stroke={color}
             strokeWidth={4 * scale}
             strokeLinecap="round"
           />
-          {/* Leaves */}
           <Ellipse
             cx={(100 - 15) * scale}
             cy={(180 - stemHeight + 10) * scale}
@@ -98,17 +121,15 @@ export default function PlantVisualization({ plantType, growthStage, color, size
       const stemHeight = 70 * scale + (stage - 6) * 10 * scale;
       const flowerSize = 15 * scale + (stage - 6) * 5 * scale;
       const petalCount = stage >= 7 ? 6 : 5;
-      
+
       return (
         <G>
-          {/* Stem */}
           <Path
             d={`M ${100 * scale} ${180 * scale} L ${100 * scale} ${180 * scale - stemHeight}`}
             stroke={color}
             strokeWidth={5 * scale}
             strokeLinecap="round"
           />
-          {/* Leaves */}
           <Ellipse
             cx={(100 - 20) * scale}
             cy={(180 - stemHeight + 20) * scale}
@@ -127,7 +148,6 @@ export default function PlantVisualization({ plantType, growthStage, color, size
             opacity={0.8}
             transform={`rotate(35 ${(100 + 20) * scale} ${(180 - stemHeight + 20) * scale})`}
           />
-          {/* Flower */}
           {Array.from({ length: petalCount }).map((_, i) => {
             const angle = (i * 360) / petalCount;
             const radian = (angle * Math.PI) / 180;
@@ -146,7 +166,6 @@ export default function PlantVisualization({ plantType, growthStage, color, size
               />
             );
           })}
-          {/* Center */}
           <Circle
             cx={100 * scale}
             cy={(180 - stemHeight) * scale}
@@ -161,17 +180,15 @@ export default function PlantVisualization({ plantType, growthStage, color, size
     const stemHeight = 100 * scale;
     const flowerSize = 25 * scale;
     const petalCount = 8;
-    
+
     return (
       <G>
-        {/* Stem */}
         <Path
           d={`M ${100 * scale} ${180 * scale} L ${100 * scale} ${180 * scale - stemHeight}`}
           stroke={color}
           strokeWidth={6 * scale}
           strokeLinecap="round"
         />
-        {/* Multiple Leaves */}
         {[
           { x: -25, y: 30, rotation: -40 },
           { x: 25, y: 30, rotation: 40 },
@@ -189,7 +206,6 @@ export default function PlantVisualization({ plantType, growthStage, color, size
             transform={`rotate(${leaf.rotation} ${(100 + leaf.x) * scale} ${(180 - stemHeight + leaf.y) * scale})`}
           />
         ))}
-        {/* Full Bloom Flower */}
         {Array.from({ length: petalCount }).map((_, i) => {
           const angle = (i * 360) / petalCount;
           const radian = (angle * Math.PI) / 180;
@@ -208,7 +224,6 @@ export default function PlantVisualization({ plantType, growthStage, color, size
             />
           );
         })}
-        {/* Center with detail */}
         <Circle
           cx={100 * scale}
           cy={(180 - stemHeight) * scale}
@@ -221,8 +236,7 @@ export default function PlantVisualization({ plantType, growthStage, color, size
           r={flowerSize * 0.2}
           fill="#FFA500"
         />
-        {/* Sparkle effect for stage 10 */}
-        {stage === 10 && (
+        {growthStage === 10 && (
           <>
             <Circle cx={85 * scale} cy={(180 - stemHeight - 10) * scale} r={2 * scale} fill="#FFD700" />
             <Circle cx={115 * scale} cy={(180 - stemHeight - 10) * scale} r={2 * scale} fill="#FFD700" />
@@ -234,7 +248,13 @@ export default function PlantVisualization({ plantType, growthStage, color, size
   };
 
   return (
-    <View style={[styles.container, { width: size, height: size }]}>
+    <Animated.View
+      style={[
+        styles.container,
+        { width: size, height: size },
+        { transform: [{ scale: breathAnim }], opacity: fadeAnim },
+      ]}
+    >
       <Svg width={size} height={size} viewBox={`0 0 ${200 * scale} ${200 * scale}`}>
         {/* Pot/Base */}
         <Path
@@ -248,11 +268,10 @@ export default function PlantVisualization({ plantType, growthStage, color, size
           ry={5 * scale}
           fill="#A0522D"
         />
-        
         {/* Plant */}
         {getPlantVisual()}
       </Svg>
-    </View>
+    </Animated.View>
   );
 }
 
@@ -262,4 +281,3 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
 });
-

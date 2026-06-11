@@ -1,50 +1,53 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
   StyleSheet,
-  TouchableOpacity,
   Alert,
 } from 'react-native';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withTiming,
+  withDelay,
+  withSpring,
+  withSequence,
+  interpolateColor,
+} from 'react-native-reanimated';
+import * as Haptics from 'expo-haptics';
 
-export default function PlantHealthMetrics({ plant, onUpdateHealth }) {
-  if (!plant) return null;
+function AnimatedHealthBar({ label, value, emoji, metric, lastAction, animDelay, onCareAction }) {
+  const [barWidth, setBarWidth] = useState(0);
+  const barFill = useSharedValue(0);
+  const btnScale = useSharedValue(1);
+  const btnFlash = useSharedValue(0);
 
-  const health = plant.healthMetrics || {
-    water: 100,
-    sunlight: 100,
-    care: 100,
-  };
-
-  const getHealthColor = (value) => {
-    if (value >= 80) return '#4CAF50';
-    if (value >= 50) return '#FF9800';
-    return '#F44336';
-  };
-
-  const getHealthEmoji = (value) => {
-    if (value >= 80) return '😊';
-    if (value >= 50) return '😐';
-    return '😟';
-  };
-
-  const handleCareAction = (metric) => {
-    const currentValue = health[metric] || 0;
-    if (currentValue >= 100) {
-      Alert.alert('Already Full', `${metric.charAt(0).toUpperCase() + metric.slice(1)} is already at maximum!`);
-      return;
+  useEffect(() => {
+    if (barWidth > 0) {
+      barFill.value = withDelay(animDelay, withTiming((value / 100) * barWidth, { duration: 700 }));
     }
+  }, [barWidth]);
 
-    const newValue = Math.min(100, currentValue + 30);
-    onUpdateHealth(plant.id, metric, newValue);
-    
-    const messages = {
-      water: '💧 Plant watered! Your plant is happier now.',
-      sunlight: '☀️ Plant got sunlight! Growth boosted.',
-      care: '🌱 Plant cared for! Health improved.',
-    };
-    
-    Alert.alert('Success', messages[metric]);
+  useEffect(() => {
+    if (barWidth > 0) {
+      barFill.value = withTiming((value / 100) * barWidth, { duration: 400 });
+    }
+  }, [value, barWidth]);
+
+  const barFillStyle = useAnimatedStyle(() => ({ width: barFill.value }));
+
+  const btnAnimStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: btnScale.value }],
+    backgroundColor: interpolateColor(btnFlash.value, [0, 1], ['#4CAF50', '#81C784']),
+    borderRadius: 8,
+    padding: 10,
+    alignItems: 'center',
+  }));
+
+  const getHealthColor = (v) => {
+    if (v >= 80) return '#4CAF50';
+    if (v >= 50) return '#FF9800';
+    return '#F44336';
   };
 
   const getHoursSince = (timestamp) => {
@@ -55,48 +58,97 @@ export default function PlantHealthMetrics({ plant, onUpdateHealth }) {
     return `${Math.floor(hours / 24)}d ago`;
   };
 
-  const HealthBar = ({ label, value, emoji, metric, lastAction }) => (
+  const handlePress = () => {
+    const currentValue = value || 0;
+    if (currentValue >= 100) {
+      Alert.alert('Already Full', `${metric.charAt(0).toUpperCase() + metric.slice(1)} is already at maximum!`);
+      return;
+    }
+    btnScale.value = withSequence(
+      withTiming(0.93, { duration: 80 }),
+      withSpring(1, { damping: 8 })
+    );
+    btnFlash.value = withSequence(
+      withTiming(1, { duration: 100 }),
+      withTiming(0, { duration: 400 })
+    );
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    const newValue = Math.min(100, currentValue + 30);
+    onCareAction(metric, newValue);
+    const messages = {
+      water: '💧 Plant watered! Your plant is happier now.',
+      sunlight: '☀️ Plant got sunlight! Growth boosted.',
+      care: '🌱 Plant cared for! Health improved.',
+    };
+    Alert.alert('Success', messages[metric]);
+  };
+
+  const isDisabled = value >= 100;
+  const barColor = getHealthColor(value);
+
+  return (
     <View style={styles.healthCard}>
       <View style={styles.healthHeader}>
         <Text style={styles.healthEmoji}>{emoji}</Text>
         <View style={styles.healthInfo}>
           <Text style={styles.healthLabel}>{label}</Text>
-          <Text style={styles.healthTime}>
-            Last: {getHoursSince(lastAction)}
-          </Text>
+          <Text style={styles.healthTime}>Last: {getHoursSince(lastAction)}</Text>
         </View>
-        <Text
-          style={[styles.healthValue, { color: getHealthColor(value) }]}
-        >
+        <Text style={[styles.healthValue, { color: barColor }]}>
           {Math.round(value)}%
         </Text>
       </View>
-      
-      <View style={styles.progressBarContainer}>
-        <View
-          style={[
-            styles.progressBar,
-            { width: `${value}%`, backgroundColor: getHealthColor(value) },
-          ]}
+
+      <View
+        style={styles.progressBarContainer}
+        onLayout={(e) => setBarWidth(e.nativeEvent.layout.width)}
+      >
+        <Animated.View
+          style={[styles.progressBar, { backgroundColor: barColor }, barFillStyle]}
         />
       </View>
 
-      <TouchableOpacity
-        style={[
-          styles.careButton,
-          value >= 100 && styles.careButtonDisabled,
-        ]}
-        onPress={() => handleCareAction(metric)}
-        disabled={value >= 100}
-      >
-        <Text style={styles.careButtonText}>
+      <Animated.View style={[isDisabled && styles.careButtonDisabledWrapper, btnAnimStyle]}>
+        <Text
+          style={[styles.careButtonText]}
+          onPress={isDisabled ? undefined : handlePress}
+        >
           {metric === 'water' && '💧 Water'}
           {metric === 'sunlight' && '☀️ Give Sunlight'}
           {metric === 'care' && '🌱 Care for Plant'}
         </Text>
-      </TouchableOpacity>
+      </Animated.View>
     </View>
   );
+}
+
+export default function PlantHealthMetrics({ plant, onUpdateHealth }) {
+  if (!plant) return null;
+
+  const stored = plant.healthMetrics || {};
+  const now = Date.now();
+  const getDecayed = (base, lastTimestamp, ratePerHour) => {
+    const hoursElapsed = (now - (lastTimestamp || plant.purchasedAt || now)) / 3600000;
+    return Math.max(0, (base ?? 100) - hoursElapsed * ratePerHour);
+  };
+  const health = {
+    water: getDecayed(stored.water, stored.lastWatered, 2),
+    sunlight: getDecayed(stored.sunlight, stored.lastSunlight, 1.5),
+    care: getDecayed(stored.care, stored.lastCared, 1),
+    lastWatered: stored.lastWatered,
+    lastSunlight: stored.lastSunlight,
+    lastCared: stored.lastCared,
+  };
+
+  const getHealthEmoji = (v) => {
+    if (v >= 80) return '😊';
+    if (v >= 50) return '😐';
+    return '😟';
+  };
+
+  const handleCareAction = (metric, newValue) => {
+    onUpdateHealth(plant.id, metric, newValue);
+  };
 
   return (
     <View style={styles.container}>
@@ -110,26 +162,32 @@ export default function PlantHealthMetrics({ plant, onUpdateHealth }) {
         </View>
       </View>
 
-      <HealthBar
+      <AnimatedHealthBar
         label="Water"
         value={health.water}
         emoji="💧"
         metric="water"
         lastAction={health.lastWatered}
+        animDelay={0}
+        onCareAction={handleCareAction}
       />
-      <HealthBar
+      <AnimatedHealthBar
         label="Sunlight"
         value={health.sunlight}
         emoji="☀️"
         metric="sunlight"
         lastAction={health.lastSunlight}
+        animDelay={100}
+        onCareAction={handleCareAction}
       />
-      <HealthBar
+      <AnimatedHealthBar
         label="Care"
         value={health.care}
         emoji="🌱"
         metric="care"
         lastAction={health.lastCared}
+        animDelay={200}
+        onCareAction={handleCareAction}
       />
 
       <View style={styles.tipContainer}>
@@ -220,14 +278,8 @@ const styles = StyleSheet.create({
     height: '100%',
     borderRadius: 4,
   },
-  careButton: {
-    backgroundColor: '#4CAF50',
-    padding: 10,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  careButtonDisabled: {
-    backgroundColor: '#CCCCCC',
+  careButtonDisabledWrapper: {
+    opacity: 0.5,
   },
   careButtonText: {
     color: '#fff',
@@ -252,4 +304,3 @@ const styles = StyleSheet.create({
     lineHeight: 18,
   },
 });
-

@@ -7,7 +7,17 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Alert,
+  Pressable,
 } from 'react-native';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withRepeat,
+  withSequence,
+  withTiming,
+  withSpring,
+} from 'react-native-reanimated';
+import { LinearGradient } from 'expo-linear-gradient';
 import { usePlants } from '../context/PlantContext';
 import { useAuth } from '../context/AuthContext';
 import PlantCard from '../components/PlantCard';
@@ -15,6 +25,46 @@ import PlantCard from '../components/PlantCard';
 export default function HomeScreen({ navigation }) {
   const { plants, isLoading } = usePlants();
   const { user, logout } = useAuth();
+
+  const fabPulse = useSharedValue(1);
+  const emptyAnim = useSharedValue(0);
+
+  useEffect(() => {
+    fabPulse.value = withRepeat(
+      withSequence(
+        withTiming(1.1, { duration: 800 }),
+        withTiming(1, { duration: 800 })
+      ),
+      -1,
+      false
+    );
+  }, []);
+
+  useEffect(() => {
+    if (!isLoading && plants.length === 0) {
+      emptyAnim.value = withSpring(1, { damping: 12, stiffness: 80 });
+    }
+  }, [isLoading, plants.length]);
+
+  const fabAnimStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: fabPulse.value }],
+  }));
+
+  const emptyAnimStyle = useAnimatedStyle(() => ({
+    opacity: emptyAnim.value,
+    transform: [{ translateY: (1 - emptyAnim.value) * 30 }],
+  }));
+
+  const handleFabPress = () => {
+    fabPulse.value = withSpring(0.85, { damping: 5 }, () => {
+      fabPulse.value = withRepeat(
+        withSequence(withTiming(1.1, { duration: 800 }), withTiming(1, { duration: 800 })),
+        -1,
+        false
+      );
+    });
+    navigation.navigate('Purchase');
+  };
 
   const handleLogout = useCallback(() => {
     Alert.alert(
@@ -26,7 +76,11 @@ export default function HomeScreen({ navigation }) {
           text: 'Logout',
           style: 'destructive',
           onPress: async () => {
-            await logout();
+            try {
+              await logout();
+            } catch (error) {
+              Alert.alert('Logout Failed', 'Please try again.');
+            }
           },
         },
       ]
@@ -43,9 +97,17 @@ export default function HomeScreen({ navigation }) {
           <Text style={styles.logoutButtonText}>Logout</Text>
         </TouchableOpacity>
       ),
-      headerTitle: user?.name 
+      headerTitle: user?.name
         ? `Welcome, ${user.name.split(' ')[0]}! 🌱`
         : 'My Plants 🌱',
+      headerBackground: () => (
+        <LinearGradient
+          colors={['#388E3C', '#4CAF50']}
+          start={[0, 0]}
+          end={[1, 0]}
+          style={StyleSheet.absoluteFill}
+        />
+      ),
     });
   }, [user, navigation, handleLogout]);
 
@@ -60,35 +122,37 @@ export default function HomeScreen({ navigation }) {
   return (
     <View style={styles.container}>
       {plants.length === 0 ? (
-        <View style={styles.emptyContainer}>
+        <Animated.View style={[styles.emptyContainer, emptyAnimStyle]}>
           <Text style={styles.emptyEmoji}>🌱</Text>
           <Text style={styles.emptyText}>No plants yet!</Text>
           <Text style={styles.emptySubtext}>Start growing your garden</Text>
-          <TouchableOpacity
+          <Pressable
             style={styles.buyButton}
             onPress={() => navigation.navigate('Purchase')}
           >
             <Text style={styles.buyButtonText}>Buy Your First Plant ($1)</Text>
-          </TouchableOpacity>
-        </View>
+          </Pressable>
+        </Animated.View>
       ) : (
         <>
           <FlatList
             data={plants}
             keyExtractor={(item) => item.id}
-            renderItem={({ item }) => (
-              <PlantCard plant={item} navigation={navigation} />
+            renderItem={({ item, index }) => (
+              <PlantCard plant={item} navigation={navigation} animIndex={index} />
             )}
             contentContainerStyle={styles.listContainer}
             numColumns={2}
             columnWrapperStyle={styles.row}
           />
-          <TouchableOpacity
-            style={styles.fab}
-            onPress={() => navigation.navigate('Purchase')}
-          >
-            <Text style={styles.fabText}>+</Text>
-          </TouchableOpacity>
+          <Animated.View style={[styles.fabWrapper, fabAnimStyle]}>
+            <TouchableOpacity
+              style={styles.fab}
+              onPress={handleFabPress}
+            >
+              <Text style={styles.fabText}>+</Text>
+            </TouchableOpacity>
+          </Animated.View>
         </>
       )}
     </View>
@@ -149,10 +213,12 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     marginBottom: 10,
   },
-  fab: {
+  fabWrapper: {
     position: 'absolute',
     right: 20,
     bottom: 20,
+  },
+  fab: {
     width: 60,
     height: 60,
     borderRadius: 30,
@@ -183,4 +249,3 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
 });
-

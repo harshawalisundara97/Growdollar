@@ -1,6 +1,13 @@
 import React from 'react';
-import { View, Text, StyleSheet, Linking, TouchableOpacity } from 'react-native';
-import MapView, { Marker } from 'react-native-maps';
+import { View, Text, StyleSheet, Linking, TouchableOpacity, Platform } from 'react-native';
+
+let MapView = null;
+let Marker = null;
+if (Platform.OS !== 'web') {
+  const Maps = require('react-native-maps');
+  MapView = Maps.default;
+  Marker = Maps.Marker;
+}
 
 export default function LocationMap({ plant }) {
   const location = plant.location;
@@ -35,26 +42,36 @@ export default function LocationMap({ plant }) {
       </View>
 
       <View style={styles.mapContainer}>
-        <MapView
-          style={styles.map}
-          initialRegion={{
-            latitude: location.latitude,
-            longitude: location.longitude,
-            latitudeDelta: 0.01,
-            longitudeDelta: 0.01,
-          }}
-          scrollEnabled={false}
-          zoomEnabled={false}
-        >
-          <Marker
-            coordinate={{
+        {MapView ? (
+          <MapView
+            style={styles.map}
+            initialRegion={{
               latitude: location.latitude,
               longitude: location.longitude,
+              latitudeDelta: 0.01,
+              longitudeDelta: 0.01,
             }}
-            title={plant.name}
-            description={location.address || 'Plant location'}
-          />
-        </MapView>
+            scrollEnabled={false}
+            zoomEnabled={false}
+          >
+            <Marker
+              coordinate={{
+                latitude: location.latitude,
+                longitude: location.longitude,
+              }}
+              title={plant.name}
+              description={location.address || 'Plant location'}
+            />
+          </MapView>
+        ) : (
+          <TouchableOpacity style={styles.webMapFallback} onPress={openMaps}>
+            <Text style={styles.webMapEmoji}>🗺️</Text>
+            <Text style={styles.webMapText}>Tap to open in Google Maps</Text>
+            <Text style={styles.webMapCoords}>
+              {location.latitude.toFixed(5)}, {location.longitude.toFixed(5)}
+            </Text>
+          </TouchableOpacity>
+        )}
       </View>
 
       {location.address && (
@@ -181,6 +198,28 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#4CAF50',
     fontWeight: '600',
+    fontFamily: 'monospace',
+  },
+  webMapFallback: {
+    flex: 1,
+    backgroundColor: '#E8F5E9',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 10,
+  },
+  webMapEmoji: {
+    fontSize: 40,
+    marginBottom: 8,
+  },
+  webMapText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#2E7D32',
+    marginBottom: 4,
+  },
+  webMapCoords: {
+    fontSize: 12,
+    color: '#666',
     fontFamily: 'monospace',
   },
 });

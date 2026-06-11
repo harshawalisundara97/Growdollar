@@ -3,11 +3,18 @@ import {
   View,
   Text,
   StyleSheet,
-  TouchableOpacity,
   ScrollView,
   Alert,
   ActivityIndicator,
+  Pressable,
 } from 'react-native';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withSpring,
+  withTiming,
+  withDelay,
+} from 'react-native-reanimated';
 import * as Location from 'expo-location';
 import { usePlants } from '../context/PlantContext';
 
@@ -20,15 +27,72 @@ const PLANT_TYPES = [
   { id: 6, name: 'Cherry Blossom', emoji: '🌸', color: '#FFB6C1' },
 ];
 
+function PurchasePlantCard({ plant, isSelected, scaleValue, entryValue, onSelect }) {
+  const cardAnimStyle = useAnimatedStyle(() => ({
+    opacity: entryValue.value,
+    transform: [
+      { translateY: (1 - entryValue.value) * 20 },
+      { scale: scaleValue.value },
+    ],
+  }));
+
+  return (
+    <Animated.View style={[styles.plantCard, isSelected && styles.plantCardSelected, cardAnimStyle]}>
+      <Pressable
+        style={styles.plantCardInner}
+        onPress={() => onSelect(plant)}
+      >
+        <Text style={styles.plantEmoji}>{plant.emoji}</Text>
+        <Text style={styles.plantName}>{plant.name}</Text>
+        {isSelected && (
+          <View style={styles.selectedBadge}>
+            <Text style={styles.selectedBadgeText}>✓</Text>
+          </View>
+        )}
+      </Pressable>
+    </Animated.View>
+  );
+}
+
 export default function PurchaseScreen({ navigation }) {
   const [selectedPlant, setSelectedPlant] = useState(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const { addPlant } = usePlants();
   const isMounted = useRef(true);
 
+  // 6 scale + entry shared values (one per plant card — hooks must be at top level)
+  const scale0 = useSharedValue(1); const entry0 = useSharedValue(0);
+  const scale1 = useSharedValue(1); const entry1 = useSharedValue(0);
+  const scale2 = useSharedValue(1); const entry2 = useSharedValue(0);
+  const scale3 = useSharedValue(1); const entry3 = useSharedValue(0);
+  const scale4 = useSharedValue(1); const entry4 = useSharedValue(0);
+  const scale5 = useSharedValue(1); const entry5 = useSharedValue(0);
+
+  const cardScales = [scale0, scale1, scale2, scale3, scale4, scale5];
+  const cardEntries = [entry0, entry1, entry2, entry3, entry4, entry5];
+
+  const btnScale = useSharedValue(1);
+  const btnAnimStyle = useAnimatedStyle(() => ({ transform: [{ scale: btnScale.value }] }));
+
   useEffect(() => {
     return () => { isMounted.current = false; };
   }, []);
+
+  useEffect(() => {
+    PLANT_TYPES.forEach((_, i) => {
+      cardEntries[i].value = withDelay(i * 60, withTiming(1, { duration: 300 }));
+    });
+  }, []);
+
+  const handleSelectPlant = (plant) => {
+    const newIndex = PLANT_TYPES.findIndex(p => p.id === plant.id);
+    if (selectedPlant) {
+      const prevIndex = PLANT_TYPES.findIndex(p => p.id === selectedPlant.id);
+      if (prevIndex >= 0) cardScales[prevIndex].value = withSpring(1, { damping: 15, stiffness: 200 });
+    }
+    if (newIndex >= 0) cardScales[newIndex].value = withSpring(1.05, { damping: 10, stiffness: 150 });
+    setSelectedPlant(plant);
+  };
 
   const getCurrentLocation = async () => {
     try {
@@ -41,37 +105,19 @@ export default function PurchaseScreen({ navigation }) {
         );
         return null;
       }
-
       const location = await Location.getCurrentPositionAsync({});
       const { latitude, longitude } = location.coords;
-
-      // Reverse geocode to get address
       let address = null;
       try {
-        const reverseGeocode = await Location.reverseGeocodeAsync({
-          latitude,
-          longitude,
-        });
+        const reverseGeocode = await Location.reverseGeocodeAsync({ latitude, longitude });
         if (reverseGeocode.length > 0) {
           const addr = reverseGeocode[0];
-          address = [
-            addr.street,
-            addr.city,
-            addr.region,
-            addr.country,
-          ]
-            .filter(Boolean)
-            .join(', ');
+          address = [addr.street, addr.city, addr.region, addr.country].filter(Boolean).join(', ');
         }
       } catch (error) {
         console.log('Reverse geocoding failed:', error);
       }
-
-      return {
-        latitude,
-        longitude,
-        address: address || 'Location saved',
-      };
+      return { latitude, longitude, address: address || 'Location saved' };
     } catch (error) {
       console.error('Error getting location:', error);
       return null;
@@ -79,65 +125,35 @@ export default function PurchaseScreen({ navigation }) {
   };
 
   const handlePurchase = async () => {
-    console.log('handlePurchase called', { selectedPlant, addPlant: !!addPlant });
-    
     if (!selectedPlant) {
       Alert.alert('Selection Required', 'Please select a plant to purchase');
       return;
     }
-
     if (!addPlant) {
-      console.error('addPlant function is not available');
       Alert.alert('Error', 'Plant service is not available. Please try again.');
       return;
     }
-
-    console.log('Starting purchase process...');
     setIsProcessing(true);
-
     try {
-      // Get location (don't block purchase if location fails)
       let location = null;
       try {
         location = await getCurrentLocation();
       } catch (locationError) {
         console.log('Location not available, continuing without location:', locationError);
-        // Continue without location - it's optional
       }
-
-      // Simulate payment processing
       await new Promise(resolve => setTimeout(resolve, 1500));
-
-      // In a real app, integrate with Stripe, Apple Pay, Google Pay, etc.
-      // For demo purposes, we'll simulate a successful payment
-      
       const newPlant = await addPlant(selectedPlant.name, selectedPlant.color, location);
-      
-      if (!newPlant) {
-        throw new Error('Failed to create plant');
-      }
-
+      if (!newPlant) throw new Error('Failed to create plant');
       if (isMounted.current) setIsProcessing(false);
-
       Alert.alert(
         'Purchase Successful!',
         `Your ${selectedPlant.name} has been planted! Watch it grow!${location ? '\n\nLocation saved successfully.' : '\n\nNote: Location was not saved.'}`,
-        [
-          {
-            text: 'OK',
-            onPress: () => {
-              navigation.navigate('PlantDetail', { plant: newPlant });
-            },
-          },
-        ]
+        [{ text: 'OK', onPress: () => { navigation.navigate('PlantDetail', { plant: newPlant }); } }]
       );
     } catch (error) {
       console.error('Purchase error:', error);
       if (isMounted.current) setIsProcessing(false);
-      Alert.alert(
-        'Purchase Failed', 
-        error.message || 'Failed to purchase plant. Please try again.'
-      );
+      Alert.alert('Purchase Failed', error.message || 'Failed to purchase plant. Please try again.');
     }
   };
 
@@ -149,23 +165,15 @@ export default function PurchaseScreen({ navigation }) {
       </View>
 
       <View style={styles.plantGrid}>
-        {PLANT_TYPES.map((plant) => (
-          <TouchableOpacity
+        {PLANT_TYPES.map((plant, index) => (
+          <PurchasePlantCard
             key={plant.id}
-            style={[
-              styles.plantCard,
-              selectedPlant?.id === plant.id && styles.plantCardSelected,
-            ]}
-            onPress={() => setSelectedPlant(plant)}
-          >
-            <Text style={styles.plantEmoji}>{plant.emoji}</Text>
-            <Text style={styles.plantName}>{plant.name}</Text>
-            {selectedPlant?.id === plant.id && (
-              <View style={styles.selectedBadge}>
-                <Text style={styles.selectedBadgeText}>✓</Text>
-              </View>
-            )}
-          </TouchableOpacity>
+            plant={plant}
+            isSelected={selectedPlant?.id === plant.id}
+            scaleValue={cardScales[index]}
+            entryValue={cardEntries[index]}
+            onSelect={handleSelectPlant}
+          />
         ))}
       </View>
 
@@ -183,30 +191,31 @@ export default function PurchaseScreen({ navigation }) {
           </View>
         )}
 
-        <TouchableOpacity
-          style={[
-            styles.purchaseButton,
-            (!selectedPlant || isProcessing) && styles.purchaseButtonDisabled,
-          ]}
-          onPress={() => {
-            console.log('Purchase button pressed', { selectedPlant, isProcessing });
-            if (!selectedPlant) {
-              Alert.alert('Select Plant', 'Please select a plant first');
-              return;
-            }
-            handlePurchase();
-          }}
-          disabled={!selectedPlant || isProcessing}
-          activeOpacity={0.7}
-        >
-          {isProcessing ? (
-            <ActivityIndicator color="#fff" />
-          ) : (
-            <Text style={styles.purchaseButtonText}>
-              {selectedPlant ? 'Purchase Plant' : 'Select a Plant First'}
-            </Text>
-          )}
-        </TouchableOpacity>
+        <Animated.View style={btnAnimStyle}>
+          <Pressable
+            style={[
+              styles.purchaseButton,
+              (!selectedPlant || isProcessing) && styles.purchaseButtonDisabled,
+            ]}
+            onPress={handlePurchase}
+            disabled={!selectedPlant || isProcessing}
+            onPressIn={() => {
+              if (selectedPlant && !isProcessing)
+                btnScale.value = withSpring(0.96, { damping: 15, stiffness: 200 });
+            }}
+            onPressOut={() => {
+              btnScale.value = withSpring(1, { damping: 15, stiffness: 200 });
+            }}
+          >
+            {isProcessing ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <Text style={styles.purchaseButtonText}>
+                {selectedPlant ? 'Purchase Plant' : 'Select a Plant First'}
+              </Text>
+            )}
+          </Pressable>
+        </Animated.View>
 
         <Text style={styles.paymentNote}>
           💳 Payment is simulated for demo. In production, integrate with a payment provider.
@@ -247,9 +256,7 @@ const styles = StyleSheet.create({
     width: '48%',
     backgroundColor: '#fff',
     borderRadius: 15,
-    padding: 20,
     marginBottom: 15,
-    alignItems: 'center',
     borderWidth: 2,
     borderColor: 'transparent',
     elevation: 2,
@@ -257,7 +264,11 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.22,
     shadowRadius: 2.22,
-    position: 'relative',
+    overflow: 'hidden',
+  },
+  plantCardInner: {
+    padding: 20,
+    alignItems: 'center',
   },
   plantCardSelected: {
     borderColor: '#4CAF50',
@@ -357,4 +368,3 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
 });
-
