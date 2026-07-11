@@ -9,6 +9,7 @@ import {
   Dimensions,
 } from 'react-native';
 import { usePlants } from '../context/PlantContext';
+import { useTheme } from '../context/ThemeContext';
 import PlantVisualization from '../components/PlantVisualization';
 import GrowthTimeline from '../components/GrowthTimeline';
 import PhotoGallery from '../components/PhotoGallery';
@@ -23,6 +24,8 @@ export default function PlantDetailScreen({ route, navigation }) {
   const { plants, deletePlant, updatePlantHealth, addPlantPhoto } = usePlants();
   const [plant, setPlant] = useState(initialPlant || null);
   const plantId = initialPlant?.id;
+  const { theme } = useTheme();
+  const styles = createStyles(theme);
 
   useEffect(() => {
     if (!plantId) return;
@@ -155,19 +158,19 @@ export default function PlantDetailScreen({ route, navigation }) {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F5F5F5',
+    backgroundColor: theme.colors.background,
   },
   plantContainer: {
-    backgroundColor: '#fff',
+    backgroundColor: theme.colors.surface,
     padding: 30,
     alignItems: 'center',
     justifyContent: 'center',
     minHeight: 300,
     borderBottomWidth: 1,
-    borderBottomColor: '#E0E0E0',
+    borderBottomColor: theme.colors.border,
   },
   infoContainer: {
     padding: 20,
@@ -175,13 +178,13 @@ const styles = StyleSheet.create({
   plantName: {
     fontSize: 28,
     fontWeight: 'bold',
-    color: '#333',
+    color: theme.colors.text,
     marginBottom: 5,
     textAlign: 'center',
   },
   plantType: {
     fontSize: 18,
-    color: '#666',
+    color: theme.colors.textSecondary,
     textAlign: 'center',
     marginBottom: 20,
   },
@@ -192,7 +195,7 @@ const styles = StyleSheet.create({
   },
   statCard: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: theme.colors.surface,
     padding: 15,
     borderRadius: 10,
     marginHorizontal: 5,
@@ -205,37 +208,37 @@ const styles = StyleSheet.create({
   },
   statLabel: {
     fontSize: 12,
-    color: '#666',
+    color: theme.colors.textSecondary,
     marginBottom: 5,
   },
   statValue: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#4CAF50',
+    color: theme.colors.primary,
     marginBottom: 5,
   },
   statSubtext: {
     fontSize: 10,
-    color: '#999',
+    color: theme.colors.textMuted,
   },
   progressBar: {
     width: '100%',
     height: 8,
-    backgroundColor: '#E0E0E0',
+    backgroundColor: theme.colors.border,
     borderRadius: 4,
     marginTop: 5,
     overflow: 'hidden',
   },
   progressFill: {
     height: '100%',
-    backgroundColor: '#4CAF50',
+    backgroundColor: theme.colors.primary,
     borderRadius: 4,
   },
   timeContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: '#fff',
+    backgroundColor: theme.colors.surface,
     padding: 15,
     borderRadius: 10,
     marginBottom: 10,
@@ -247,23 +250,23 @@ const styles = StyleSheet.create({
   },
   timeLabel: {
     fontSize: 16,
-    color: '#333',
+    color: theme.colors.text,
     fontWeight: '600',
   },
   timeValue: {
     fontSize: 16,
-    color: '#4CAF50',
+    color: theme.colors.primary,
     fontWeight: 'bold',
   },
   deleteButton: {
-    backgroundColor: '#FF5252',
+    backgroundColor: theme.colors.danger,
     padding: 15,
     borderRadius: 10,
     alignItems: 'center',
     marginTop: 20,
   },
   deleteButtonText: {
-    color: '#fff',
+    color: theme.colors.textInverse,
     fontSize: 16,
     fontWeight: 'bold',
   },

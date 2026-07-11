@@ -8,9 +8,12 @@ import Animated, {
   withDelay,
 } from 'react-native-reanimated';
 import PlantVisualization from './PlantVisualization';
+import { useTheme } from '../context/ThemeContext';
 
 export default function PlantCard({ plant, navigation, animIndex = 0 }) {
   const [barWidth, setBarWidth] = useState(0);
+  const { theme } = useTheme();
+  const styles = createStyles(theme);
 
   const entryY = useSharedValue(30);
   const entryOp = useSharedValue(0);
@@ -90,10 +93,10 @@ export default function PlantCard({ plant, navigation, animIndex = 0 }) {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme) => StyleSheet.create({
   card: {
     width: '100%',
-    backgroundColor: '#fff',
+    backgroundColor: theme.colors.surface,
     borderRadius: 15,
     padding: 15,
     alignItems: 'center',
@@ -113,25 +116,25 @@ const styles = StyleSheet.create({
   plantName: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#333',
+    color: theme.colors.text,
     marginBottom: 5,
     textAlign: 'center',
   },
   growthStage: {
     fontSize: 12,
-    color: '#666',
+    color: theme.colors.textSecondary,
     marginBottom: 8,
   },
   progressBar: {
     width: '100%',
     height: 6,
-    backgroundColor: '#E0E0E0',
+    backgroundColor: theme.colors.border,
     borderRadius: 3,
     overflow: 'hidden',
   },
   progressFill: {
     height: '100%',
-    backgroundColor: '#4CAF50',
+    backgroundColor: theme.colors.primary,
     borderRadius: 3,
   },
 });

@@ -1,10 +1,13 @@
 import React from 'react';
 import { View, Text, StyleSheet, ScrollView, Dimensions } from 'react-native';
 import Svg, { Line, Circle, Text as SvgText } from 'react-native-svg';
+import { useTheme } from '../context/ThemeContext';
 
 const { width } = Dimensions.get('window');
 
 export default function GrowthTimeline({ plant }) {
+  const { theme } = useTheme();
+  const styles = createStyles(theme);
   const stages = [
     'Seed',
     'Sprout',
@@ -94,9 +97,9 @@ export default function GrowthTimeline({ plant }) {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme) => StyleSheet.create({
   container: {
-    backgroundColor: '#fff',
+    backgroundColor: theme.colors.surface,
     padding: 15,
     borderRadius: 10,
     marginVertical: 10,
@@ -109,7 +112,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#333',
+    color: theme.colors.text,
     marginBottom: 15,
   },
   scrollView: {
@@ -135,30 +138,30 @@ const styles = StyleSheet.create({
     left: 10,
     width: 60,
     height: 3,
-    backgroundColor: '#E0E0E0',
+    backgroundColor: theme.colors.border,
     zIndex: 0,
   },
   lineCompleted: {
-    backgroundColor: '#4CAF50',
+    backgroundColor: theme.colors.primary,
   },
   circle: {
     width: 20,
     height: 20,
     borderRadius: 10,
-    backgroundColor: '#E0E0E0',
+    backgroundColor: theme.colors.border,
     borderWidth: 3,
-    borderColor: '#fff',
+    borderColor: theme.colors.surface,
     zIndex: 1,
     justifyContent: 'center',
     alignItems: 'center',
   },
   circleCompleted: {
-    backgroundColor: '#4CAF50',
-    borderColor: '#4CAF50',
+    backgroundColor: theme.colors.primary,
+    borderColor: theme.colors.primary,
   },
   circleCurrent: {
-    backgroundColor: '#4CAF50',
-    borderColor: '#4CAF50',
+    backgroundColor: theme.colors.primary,
+    borderColor: theme.colors.primary,
     width: 24,
     height: 24,
     borderRadius: 12,
@@ -167,34 +170,34 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: '#fff',
+    backgroundColor: theme.colors.textInverse,
   },
   stageLabel: {
     fontSize: 11,
-    color: '#999',
+    color: theme.colors.textMuted,
     textAlign: 'center',
     marginTop: 5,
     minHeight: 30,
   },
   stageLabelCompleted: {
-    color: '#333',
+    color: theme.colors.text,
     fontWeight: '600',
   },
   timeLabel: {
     fontSize: 9,
-    color: '#999',
+    color: theme.colors.textMuted,
     marginTop: 2,
     textAlign: 'center',
   },
   currentBadge: {
-    backgroundColor: '#4CAF50',
+    backgroundColor: theme.colors.primary,
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 8,
     marginTop: 4,
   },
   currentBadgeText: {
-    color: '#fff',
+    color: theme.colors.textInverse,
     fontSize: 8,
     fontWeight: 'bold',
   },

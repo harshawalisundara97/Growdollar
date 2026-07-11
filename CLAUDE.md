@@ -15,7 +15,7 @@ No lint or test scripts are configured. There is no testing infrastructure in th
 
 ## Architecture
 
-**Plant Growing App** — an Expo (SDK 49) React Native app for virtual plant cultivation with Firebase auth and local plant data.
+**Plant Growing App** — an Expo (SDK 49) React Native app for virtual plant cultivation with Supabase auth and a Supabase Postgres database.
 
 ### Navigation
 
@@ -28,18 +28,19 @@ Manual stack navigation via `@react-navigation/native-stack`. `App.js` is the en
 
 Two React Contexts (no Redux/Zustand):
 
-- **`context/AuthContext.js`** — Firebase Auth state (login, signup, logout, user profile from Firestore). Exposes `useAuth()`.
-- **`context/PlantContext.js`** — Plant collection stored locally via `AsyncStorage`. Growth stages auto-advance based on elapsed time; an interval runs every 60 seconds. Exposes `usePlants()`.
+- **`context/AuthContext.js`** — Supabase Auth state (login, signup, logout, user profile from the `profiles` table). Exposes `useAuth()`.
+- **`context/PlantContext.js`** — Plant collection synced to the Supabase `plants` table, scoped to the signed-in user via Row Level Security. Growth stages auto-advance based on elapsed time; an interval runs every 60 seconds and persists any stage changes back to Supabase. Exposes `usePlants()`.
 
-Both contexts wrap the entire app in `App.js`.
+Both contexts wrap the entire app in `App.js` (`ThemeProvider > AuthProvider > PlantProvider`), so `PlantProvider` can read the signed-in user from `useAuth()`.
 
-### Firebase
+### Supabase
 
-Config lives in `config/firebase.js` (copy from `config/firebase.example.js` if missing). Exports `auth` and `db`. Firebase is used for:
-- Authentication: email/password via Firebase Auth
-- User profiles: stored in Firestore at `/users/{uid}`
+Config lives in `config/supabase.js` (copy from `config/supabase.example.js` if missing) — see [SUPABASE_SETUP.md](SUPABASE_SETUP.md) for full setup steps. Exports `supabase` client and `isSupabaseConfigured`. Supabase is used for:
+- Authentication: email/password via Supabase Auth (`supabase.auth`)
+- User profiles: `public.profiles` table (auto-created on signup via a Postgres trigger, see `supabase/schema.sql`)
+- Plant data: `public.plants` table, one row per plant, RLS-scoped to `auth.uid()`
 
-Plant data is **not** synced to Firestore — it stays in `AsyncStorage` on the device only.
+`context/PlantContext.js` maps between the app's camelCase plant shape and the table's snake_case columns (`rowToPlant` / `plantToRow`).
 
 ### Plant Growth Model
 
@@ -50,7 +51,7 @@ Plant data is **not** synced to Firestore — it stays in `AsyncStorage` on the 
 
 ### Plant Data Shape
 
-Each plant object stored in `AsyncStorage` has: `id`, `type`, `color`, `name`, `purchasedAt` (Unix ms), `growthStage` (0–10), `growthHistory` (array of `{stage, timestamp}`), `healthMetrics` (`water`, `sunlight`, `care` 0–100 + `lastWatered/lastSunlight/lastCared` timestamps), `environmentalImpact` (`carbonOffset`, `oxygenProduced`, `treesEquivalent`), `location` (`latitude`, `longitude`, `address`), `photos` (array of `{uri, timestamp, growthStage}`).
+Each plant object (as used in app code, mapped from the `plants` table row) has: `id`, `type`, `color`, `name`, `purchasedAt` (Unix ms), `growthStage` (0–10), `growthHistory` (array of `{stage, timestamp}`), `healthMetrics` (`water`, `sunlight`, `care` 0–100 + `lastWatered/lastSunlight/lastCared` timestamps), `environmentalImpact` (`carbonOffset`, `oxygenProduced`, `treesEquivalent`), `location` (`latitude`, `longitude`, `address`), `photos` (array of `{uri, timestamp, growthStage}`), `aiInsights` (array, reserved for the planned AI plant-scan feature).
 
 Health metrics decay rates: water −2%/hr, sunlight −1.5%/hr, care −1%/hr. Carbon offset rates per growth stage: Tree 2.5 kg, Cherry Blossom 1.0 kg, Cactus 0.2 kg, Rose 0.15 kg, Sunflower/Tulip 0.1 kg. Oxygen = carbonOffset × 0.73; treesEquivalent = carbonOffset / 22.
 

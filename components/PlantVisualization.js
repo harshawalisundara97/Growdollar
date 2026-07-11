@@ -275,9 +275,11 @@ export default function PlantVisualization({ plantType, growthStage, color, size
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = () => StyleSheet.create({
   container: {
     alignItems: 'center',
     justifyContent: 'center',
   },
 });
+
+const styles = createStyles();

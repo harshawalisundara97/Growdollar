@@ -17,6 +17,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import * as Location from 'expo-location';
 import { usePlants } from '../context/PlantContext';
+import { useTheme } from '../context/ThemeContext';
 
 const PLANT_TYPES = [
   { id: 1, name: 'Sunflower', emoji: '🌻', color: '#FFD700' },
@@ -28,6 +29,8 @@ const PLANT_TYPES = [
 ];
 
 function PurchasePlantCard({ plant, isSelected, scaleValue, entryValue, onSelect }) {
+  const { theme } = useTheme();
+  const styles = createStyles(theme);
   const cardAnimStyle = useAnimatedStyle(() => ({
     opacity: entryValue.value,
     transform: [
@@ -58,6 +61,8 @@ export default function PurchaseScreen({ navigation }) {
   const [selectedPlant, setSelectedPlant] = useState(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const { addPlant } = usePlants();
+  const { theme } = useTheme();
+  const styles = createStyles(theme);
   const isMounted = useRef(true);
 
   // 6 scale + entry shared values (one per plant card — hooks must be at top level)
@@ -208,7 +213,7 @@ export default function PurchaseScreen({ navigation }) {
             }}
           >
             {isProcessing ? (
-              <ActivityIndicator color="#fff" />
+              <ActivityIndicator color={theme.colors.textInverse} />
             ) : (
               <Text style={styles.purchaseButtonText}>
                 {selectedPlant ? 'Purchase Plant' : 'Select a Plant First'}
@@ -225,26 +230,26 @@ export default function PurchaseScreen({ navigation }) {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F5F5F5',
+    backgroundColor: theme.colors.background,
   },
   header: {
     padding: 20,
-    backgroundColor: '#fff',
+    backgroundColor: theme.colors.surface,
     borderBottomWidth: 1,
-    borderBottomColor: '#E0E0E0',
+    borderBottomColor: theme.colors.border,
   },
   headerTitle: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#333',
+    color: theme.colors.text,
     marginBottom: 5,
   },
   headerSubtitle: {
     fontSize: 16,
-    color: '#666',
+    color: theme.colors.textSecondary,
   },
   plantGrid: {
     flexDirection: 'row',
@@ -254,7 +259,7 @@ const styles = StyleSheet.create({
   },
   plantCard: {
     width: '48%',
-    backgroundColor: '#fff',
+    backgroundColor: theme.colors.surface,
     borderRadius: 15,
     marginBottom: 15,
     borderWidth: 2,
@@ -271,8 +276,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   plantCardSelected: {
-    borderColor: '#4CAF50',
-    backgroundColor: '#F1F8F4',
+    borderColor: theme.colors.primary,
+    backgroundColor: theme.colors.surfaceAlt,
   },
   plantEmoji: {
     fontSize: 50,
@@ -281,7 +286,7 @@ const styles = StyleSheet.create({
   plantName: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#333',
+    color: theme.colors.text,
     textAlign: 'center',
   },
   selectedBadge: {
@@ -291,18 +296,18 @@ const styles = StyleSheet.create({
     width: 25,
     height: 25,
     borderRadius: 12.5,
-    backgroundColor: '#4CAF50',
+    backgroundColor: theme.colors.primary,
     justifyContent: 'center',
     alignItems: 'center',
   },
   selectedBadgeText: {
-    color: '#fff',
+    color: theme.colors.textInverse,
     fontSize: 16,
     fontWeight: 'bold',
   },
   paymentSection: {
     padding: 20,
-    backgroundColor: '#fff',
+    backgroundColor: theme.colors.surface,
     margin: 10,
     borderRadius: 15,
     elevation: 2,
@@ -318,20 +323,20 @@ const styles = StyleSheet.create({
     marginBottom: 20,
     paddingBottom: 20,
     borderBottomWidth: 1,
-    borderBottomColor: '#E0E0E0',
+    borderBottomColor: theme.colors.border,
   },
   priceLabel: {
     fontSize: 20,
-    color: '#333',
+    color: theme.colors.text,
     fontWeight: '600',
   },
   priceValue: {
     fontSize: 28,
     fontWeight: 'bold',
-    color: '#4CAF50',
+    color: theme.colors.primary,
   },
   purchaseButton: {
-    backgroundColor: '#4CAF50',
+    backgroundColor: theme.colors.primary,
     padding: 18,
     borderRadius: 10,
     alignItems: 'center',
@@ -340,17 +345,17 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   purchaseButtonDisabled: {
-    backgroundColor: '#CCCCCC',
+    backgroundColor: theme.colors.textMuted,
     opacity: 0.6,
   },
   purchaseButtonText: {
-    color: '#fff',
+    color: theme.colors.textInverse,
     fontSize: 18,
     fontWeight: 'bold',
   },
   paymentNote: {
     fontSize: 12,
-    color: '#999',
+    color: theme.colors.textMuted,
     textAlign: 'center',
     fontStyle: 'italic',
   },
@@ -360,7 +365,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     marginBottom: 15,
     borderLeftWidth: 4,
-    borderLeftColor: '#FFC107',
+    borderLeftColor: theme.colors.warning,
   },
   selectHintText: {
     color: '#856404',

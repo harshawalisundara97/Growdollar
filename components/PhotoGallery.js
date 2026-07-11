@@ -11,12 +11,15 @@ import {
   Alert,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
+import { useTheme } from '../context/ThemeContext';
 
 const { width } = Dimensions.get('window');
 
 export default function PhotoGallery({ plant, onAddPhoto }) {
   const [selectedPhoto, setSelectedPhoto] = useState(null);
   const photos = plant.photos || [];
+  const { theme } = useTheme();
+  const styles = createStyles(theme);
 
   const requestPermissions = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -191,9 +194,9 @@ export default function PhotoGallery({ plant, onAddPhoto }) {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme) => StyleSheet.create({
   container: {
-    backgroundColor: '#fff',
+    backgroundColor: theme.colors.surface,
     padding: 15,
     borderRadius: 10,
     marginVertical: 10,
@@ -212,16 +215,16 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#333',
+    color: theme.colors.text,
   },
   addButton: {
-    backgroundColor: '#4CAF50',
+    backgroundColor: theme.colors.primary,
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 15,
   },
   addButtonText: {
-    color: '#fff',
+    color: theme.colors.textInverse,
     fontSize: 12,
     fontWeight: '600',
   },
@@ -236,23 +239,23 @@ const styles = StyleSheet.create({
   emptyText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#333',
+    color: theme.colors.text,
     marginBottom: 5,
   },
   emptySubtext: {
     fontSize: 12,
-    color: '#999',
+    color: theme.colors.textMuted,
     marginBottom: 15,
     textAlign: 'center',
   },
   emptyButton: {
-    backgroundColor: '#4CAF50',
+    backgroundColor: theme.colors.primary,
     paddingHorizontal: 20,
     paddingVertical: 10,
     borderRadius: 20,
   },
   emptyButtonText: {
-    color: '#fff',
+    color: theme.colors.textInverse,
     fontSize: 14,
     fontWeight: '600',
   },
@@ -262,14 +265,14 @@ const styles = StyleSheet.create({
   photoCard: {
     width: 150,
     marginRight: 15,
-    backgroundColor: '#f9f9f9',
+    backgroundColor: theme.colors.surfaceAlt,
     borderRadius: 10,
     overflow: 'hidden',
   },
   photo: {
     width: '100%',
     height: 150,
-    backgroundColor: '#E0E0E0',
+    backgroundColor: theme.colors.border,
   },
   photoInfo: {
     padding: 10,
@@ -277,12 +280,12 @@ const styles = StyleSheet.create({
   photoStage: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#333',
+    color: theme.colors.text,
     marginBottom: 4,
   },
   photoDate: {
     fontSize: 10,
-    color: '#999',
+    color: theme.colors.textMuted,
   },
   modalContainer: {
     flex: 1,

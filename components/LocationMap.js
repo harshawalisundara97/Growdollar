@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet, Linking, TouchableOpacity, Platform } from 'react-native';
+import { useTheme } from '../context/ThemeContext';
 
 let MapView = null;
 let Marker = null;
@@ -10,6 +11,8 @@ if (Platform.OS !== 'web') {
 }
 
 export default function LocationMap({ plant }) {
+  const { theme } = useTheme();
+  const styles = createStyles(theme);
   const location = plant.location;
 
   if (!location || location.latitude == null || location.longitude == null) {
@@ -99,9 +102,9 @@ export default function LocationMap({ plant }) {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme) => StyleSheet.create({
   container: {
-    backgroundColor: '#fff',
+    backgroundColor: theme.colors.surface,
     padding: 15,
     borderRadius: 10,
     marginVertical: 10,
@@ -120,16 +123,16 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#333',
+    color: theme.colors.text,
   },
   openButton: {
-    backgroundColor: '#4CAF50',
+    backgroundColor: theme.colors.primary,
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 15,
   },
   openButtonText: {
-    color: '#fff',
+    color: theme.colors.textInverse,
     fontSize: 12,
     fontWeight: '600',
   },
@@ -144,12 +147,12 @@ const styles = StyleSheet.create({
   noLocationText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#333',
+    color: theme.colors.text,
     marginBottom: 5,
   },
   noLocationSubtext: {
     fontSize: 12,
-    color: '#999',
+    color: theme.colors.textMuted,
     textAlign: 'center',
   },
   mapContainer: {
@@ -163,19 +166,19 @@ const styles = StyleSheet.create({
     height: '100%',
   },
   addressContainer: {
-    backgroundColor: '#f9f9f9',
+    backgroundColor: theme.colors.surfaceAlt,
     padding: 12,
     borderRadius: 8,
     marginBottom: 10,
   },
   addressLabel: {
     fontSize: 12,
-    color: '#666',
+    color: theme.colors.textSecondary,
     marginBottom: 4,
   },
   addressText: {
     fontSize: 14,
-    color: '#333',
+    color: theme.colors.text,
     fontWeight: '600',
   },
   coordinatesContainer: {
@@ -184,25 +187,25 @@ const styles = StyleSheet.create({
   },
   coordinateItem: {
     flex: 1,
-    backgroundColor: '#f9f9f9',
+    backgroundColor: theme.colors.surfaceAlt,
     padding: 10,
     borderRadius: 8,
     marginHorizontal: 5,
   },
   coordinateLabel: {
     fontSize: 11,
-    color: '#666',
+    color: theme.colors.textSecondary,
     marginBottom: 4,
   },
   coordinateValue: {
     fontSize: 12,
-    color: '#4CAF50',
+    color: theme.colors.primary,
     fontWeight: '600',
     fontFamily: 'monospace',
   },
   webMapFallback: {
     flex: 1,
-    backgroundColor: '#E8F5E9',
+    backgroundColor: theme.colors.surfaceAlt,
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: 10,
@@ -214,12 +217,12 @@ const styles = StyleSheet.create({
   webMapText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#2E7D32',
+    color: theme.colors.primaryDark,
     marginBottom: 4,
   },
   webMapCoords: {
     fontSize: 12,
-    color: '#666',
+    color: theme.colors.textSecondary,
     fontFamily: 'monospace',
   },
 });

@@ -20,6 +20,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useAuth } from '../context/AuthContext';
+import { useTheme } from '../context/ThemeContext';
 
 export default function LoginScreen({ navigation }) {
   const [email, setEmail] = useState('');
@@ -28,6 +29,8 @@ export default function LoginScreen({ navigation }) {
   const [emailFocused, setEmailFocused] = useState(false);
   const [passwordFocused, setPasswordFocused] = useState(false);
   const { login } = useAuth();
+  const { theme } = useTheme();
+  const styles = createStyles(theme);
 
   const emojiScale = useSharedValue(0);
   const emojiOpacity = useSharedValue(0);
@@ -86,7 +89,7 @@ export default function LoginScreen({ navigation }) {
 
   return (
     <LinearGradient
-      colors={['#E8F5E9', '#F1F8E9', '#FFFFFF']}
+      colors={theme.mode === 'dark' ? [theme.colors.background, theme.colors.surfaceAlt, theme.colors.background] : ['#E8F5E9', '#F1F8E9', '#FFFFFF']}
       start={[0, 0]}
       end={[0, 1]}
       style={styles.container}
@@ -115,7 +118,7 @@ export default function LoginScreen({ navigation }) {
                   <TextInput
                     style={[styles.input, emailFocused && styles.inputFocused]}
                     placeholder="Enter your email"
-                    placeholderTextColor="#999"
+                    placeholderTextColor={theme.colors.textMuted}
                     value={email}
                     onChangeText={setEmail}
                     keyboardType="email-address"
@@ -133,7 +136,7 @@ export default function LoginScreen({ navigation }) {
                   <TextInput
                     style={[styles.input, passwordFocused && styles.inputFocused]}
                     placeholder="Enter your password"
-                    placeholderTextColor="#999"
+                    placeholderTextColor={theme.colors.textMuted}
                     value={password}
                     onChangeText={setPassword}
                     secureTextEntry
@@ -158,7 +161,7 @@ export default function LoginScreen({ navigation }) {
                     }}
                   >
                     {isLoading ? (
-                      <ActivityIndicator color="#fff" />
+                      <ActivityIndicator color={theme.colors.textInverse} />
                     ) : (
                       <Text style={styles.loginButtonText}>Sign In</Text>
                     )}
@@ -195,7 +198,7 @@ export default function LoginScreen({ navigation }) {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme) => StyleSheet.create({
   container: {
     flex: 1,
   },
@@ -218,12 +221,12 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 32,
     fontWeight: 'bold',
-    color: '#333',
+    color: theme.colors.text,
     marginBottom: 10,
   },
   subtitle: {
     fontSize: 16,
-    color: '#666',
+    color: theme.colors.textSecondary,
     textAlign: 'center',
   },
   form: {
@@ -235,28 +238,28 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#333',
+    color: theme.colors.text,
     marginBottom: 8,
   },
   input: {
-    backgroundColor: '#fff',
+    backgroundColor: theme.colors.surface,
     borderRadius: 12,
     padding: 16,
     fontSize: 16,
     borderWidth: 1,
-    borderColor: '#E0E0E0',
-    color: '#333',
+    borderColor: theme.colors.border,
+    color: theme.colors.text,
   },
   inputFocused: {
-    borderColor: '#4CAF50',
+    borderColor: theme.colors.primary,
     elevation: 3,
-    shadowColor: '#4CAF50',
+    shadowColor: theme.colors.primary,
     shadowOpacity: 0.2,
     shadowRadius: 4,
     shadowOffset: { width: 0, height: 2 },
   },
   loginButton: {
-    backgroundColor: '#4CAF50',
+    backgroundColor: theme.colors.primary,
     borderRadius: 12,
     padding: 16,
     alignItems: 'center',
@@ -268,10 +271,10 @@ const styles = StyleSheet.create({
     shadowRadius: 3.84,
   },
   loginButtonDisabled: {
-    backgroundColor: '#CCCCCC',
+    backgroundColor: theme.colors.textMuted,
   },
   loginButtonText: {
-    color: '#fff',
+    color: theme.colors.textInverse,
     fontSize: 18,
     fontWeight: 'bold',
   },
@@ -283,22 +286,22 @@ const styles = StyleSheet.create({
   dividerLine: {
     flex: 1,
     height: 1,
-    backgroundColor: '#E0E0E0',
+    backgroundColor: theme.colors.border,
   },
   dividerText: {
     marginHorizontal: 15,
-    color: '#999',
+    color: theme.colors.textMuted,
     fontSize: 14,
   },
   signupButton: {
     alignItems: 'center',
   },
   signupButtonText: {
-    color: '#666',
+    color: theme.colors.textSecondary,
     fontSize: 14,
   },
   signupLink: {
-    color: '#4CAF50',
+    color: theme.colors.primary,
     fontWeight: 'bold',
   },
   footer: {
@@ -307,7 +310,7 @@ const styles = StyleSheet.create({
   },
   footerText: {
     fontSize: 12,
-    color: '#999',
+    color: theme.colors.textMuted,
     textAlign: 'center',
     lineHeight: 18,
   },

@@ -15,8 +15,11 @@ import Animated, {
   interpolateColor,
 } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
+import { useTheme } from '../context/ThemeContext';
 
 function AnimatedHealthBar({ label, value, emoji, metric, lastAction, animDelay, onCareAction }) {
+  const { theme } = useTheme();
+  const styles = createStyles(theme);
   const [barWidth, setBarWidth] = useState(0);
   const barFill = useSharedValue(0);
   const btnScale = useSharedValue(1);
@@ -38,16 +41,16 @@ function AnimatedHealthBar({ label, value, emoji, metric, lastAction, animDelay,
 
   const btnAnimStyle = useAnimatedStyle(() => ({
     transform: [{ scale: btnScale.value }],
-    backgroundColor: interpolateColor(btnFlash.value, [0, 1], ['#4CAF50', '#81C784']),
+    backgroundColor: interpolateColor(btnFlash.value, [0, 1], [theme.colors.primary, theme.colors.primaryLight]),
     borderRadius: 8,
     padding: 10,
     alignItems: 'center',
   }));
 
   const getHealthColor = (v) => {
-    if (v >= 80) return '#4CAF50';
-    if (v >= 50) return '#FF9800';
-    return '#F44336';
+    if (v >= 80) return theme.colors.success;
+    if (v >= 50) return theme.colors.warning;
+    return theme.colors.danger;
   };
 
   const getHoursSince = (timestamp) => {
@@ -123,6 +126,8 @@ function AnimatedHealthBar({ label, value, emoji, metric, lastAction, animDelay,
 }
 
 export default function PlantHealthMetrics({ plant, onUpdateHealth }) {
+  const { theme } = useTheme();
+  const styles = createStyles(theme);
   if (!plant) return null;
 
   const stored = plant.healthMetrics || {};
@@ -201,9 +206,9 @@ export default function PlantHealthMetrics({ plant, onUpdateHealth }) {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme) => StyleSheet.create({
   container: {
-    backgroundColor: '#fff',
+    backgroundColor: theme.colors.surface,
     padding: 15,
     borderRadius: 10,
     marginVertical: 10,
@@ -222,7 +227,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#333',
+    color: theme.colors.text,
   },
   overallHealth: {
     alignItems: 'center',
@@ -232,11 +237,11 @@ const styles = StyleSheet.create({
   },
   overallText: {
     fontSize: 10,
-    color: '#666',
+    color: theme.colors.textSecondary,
     marginTop: 2,
   },
   healthCard: {
-    backgroundColor: '#f9f9f9',
+    backgroundColor: theme.colors.surfaceAlt,
     padding: 12,
     borderRadius: 10,
     marginBottom: 12,
@@ -256,11 +261,11 @@ const styles = StyleSheet.create({
   healthLabel: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#333',
+    color: theme.colors.text,
   },
   healthTime: {
     fontSize: 11,
-    color: '#999',
+    color: theme.colors.textMuted,
     marginTop: 2,
   },
   healthValue: {
@@ -269,7 +274,7 @@ const styles = StyleSheet.create({
   },
   progressBarContainer: {
     height: 8,
-    backgroundColor: '#E0E0E0',
+    backgroundColor: theme.colors.border,
     borderRadius: 4,
     overflow: 'hidden',
     marginBottom: 10,
@@ -282,12 +287,12 @@ const styles = StyleSheet.create({
     opacity: 0.5,
   },
   careButtonText: {
-    color: '#fff',
+    color: theme.colors.textInverse,
     fontSize: 13,
     fontWeight: '600',
   },
   tipContainer: {
-    backgroundColor: '#E8F5E9',
+    backgroundColor: theme.colors.surfaceAlt,
     padding: 12,
     borderRadius: 8,
     marginTop: 5,
@@ -295,12 +300,12 @@ const styles = StyleSheet.create({
   tipTitle: {
     fontSize: 14,
     fontWeight: 'bold',
-    color: '#2E7D32',
+    color: theme.colors.primaryDark,
     marginBottom: 5,
   },
   tipText: {
     fontSize: 12,
-    color: '#388E3C',
+    color: theme.colors.primaryDark,
     lineHeight: 18,
   },
 });

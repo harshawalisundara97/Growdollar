@@ -18,8 +18,8 @@ dist/
 .env
 .env.local
 
-# Firebase config with real keys (if you add actual keys, uncomment the line below)
-# config/firebase.js
+# Supabase config with real keys
+config/supabase.js
 
 # IDE
 .vscode/

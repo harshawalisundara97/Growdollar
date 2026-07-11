@@ -1,5 +1,6 @@
-import React, { createContext, useState, useEffect, useContext } from 'react';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import React, { createContext, useState, useEffect, useContext, useRef } from 'react';
+import { supabase, isSupabaseConfigured } from '../config/supabase';
+import { useAuth } from './AuthContext';
 
 const PlantContext = createContext();
 
@@ -11,128 +12,130 @@ export const usePlants = () => {
   return context;
 };
 
+const CARBON_PER_STAGE = {
+  Tree: 2.5,
+  Sunflower: 0.1,
+  Rose: 0.15,
+  Cactus: 0.2,
+  Tulip: 0.1,
+  'Cherry Blossom': 1.0,
+};
+
+const computeEnvironmentalImpact = (type, growthStage) => {
+  const baseCarbon = CARBON_PER_STAGE[type] || 0.1;
+  const carbonOffset = (baseCarbon * growthStage) / 10;
+  return {
+    carbonOffset: parseFloat(carbonOffset.toFixed(2)),
+    oxygenProduced: parseFloat((carbonOffset * 0.73).toFixed(2)),
+    treesEquivalent: parseFloat((carbonOffset / 22).toFixed(4)),
+  };
+};
+
+// --- row <-> app-shape mapping -------------------------------------------
+
+const rowToPlant = (row) => ({
+  id: row.id,
+  type: row.type,
+  color: row.color,
+  name: row.name,
+  purchasedAt: new Date(row.purchased_at).getTime(),
+  growthStage: row.growth_stage,
+  growthHistory: row.growth_history || [],
+  healthMetrics: row.health_metrics || {},
+  environmentalImpact: row.environmental_impact || {},
+  location: row.location || null,
+  photos: row.photos || [],
+  aiInsights: row.ai_insights || [],
+});
+
+const plantToRow = (plant, userId) => ({
+  id: plant.id,
+  user_id: userId,
+  type: plant.type,
+  color: plant.color,
+  name: plant.name,
+  purchased_at: new Date(plant.purchasedAt).toISOString(),
+  growth_stage: plant.growthStage,
+  growth_history: plant.growthHistory,
+  health_metrics: plant.healthMetrics,
+  environmental_impact: plant.environmentalImpact,
+  location: plant.location,
+  photos: plant.photos,
+  ai_insights: plant.aiInsights || [],
+});
+
 export const PlantProvider = ({ children }) => {
+  const { user } = useAuth();
   const [plants, setPlants] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  const plantsRef = useRef(plants);
+  plantsRef.current = plants;
 
-  // Helper function to calculate environmental impact
-  const updateEnvironmentalImpact = (plant) => {
-    // Calculate based on growth stage and plant type
-    const carbonPerStage = {
-      'Tree': 2.5,
-      'Sunflower': 0.1,
-      'Rose': 0.15,
-      'Cactus': 0.2,
-      'Tulip': 0.1,
-      'Cherry Blossom': 1.0,
-    };
-    const baseCarbon = carbonPerStage[plant.type] || 0.1;
-    const carbonOffset = (baseCarbon * plant.growthStage) / 10;
-    const oxygenProduced = carbonOffset * 0.73; // Rough conversion
-    const treesEquivalent = carbonOffset / 22; // Average tree absorbs 22kg CO2/year
+  const updateEnvironmentalImpact = (plant) =>
+    computeEnvironmentalImpact(plant.type, plant.growthStage);
+
+  const recomputeGrowth = (plant, now = Date.now()) => {
+    const elapsed = now - (plant.purchasedAt || now);
+    const hoursElapsed = elapsed / (1000 * 60 * 60);
+    const newGrowthStage = Math.min(Math.floor(hoursElapsed / 2), 10);
+
+    const growthHistory = [...(plant.growthHistory || [{ stage: 0, timestamp: plant.purchasedAt }])];
+    const lastStage = growthHistory[growthHistory.length - 1]?.stage ?? 0;
+    if (newGrowthStage > lastStage) {
+      growthHistory.push({ stage: newGrowthStage, timestamp: now });
+    }
 
     return {
-      carbonOffset: parseFloat(carbonOffset.toFixed(2)),
-      oxygenProduced: parseFloat(oxygenProduced.toFixed(2)),
-      treesEquivalent: parseFloat(treesEquivalent.toFixed(4)),
+      ...plant,
+      growthStage: newGrowthStage,
+      growthHistory,
+      environmentalImpact: computeEnvironmentalImpact(plant.type, newGrowthStage),
+      changed: newGrowthStage !== plant.growthStage,
     };
   };
 
-  // Load plants from storage
+  const persistPlant = async (plant) => {
+    if (!isSupabaseConfigured || !user) return;
+    const { changed, ...row } = plantToRow(plant, user.uid);
+    const { error } = await supabase.from('plants').update(row).eq('id', plant.id);
+    if (error) console.error('Error saving plant:', error);
+  };
+
+  // Load plants for the signed-in user
   useEffect(() => {
+    if (!user) {
+      setPlants([]);
+      setIsLoading(false);
+      return;
+    }
     loadPlants();
-  }, []);
-
-  // Update plant growth every minute
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setPlants(prevPlants => {
-        const now = Date.now();
-        const updatedPlants = prevPlants.map(plant => {
-          const elapsed = now - (plant.purchasedAt || now);
-          const hoursElapsed = elapsed / (1000 * 60 * 60);
-          const newGrowthStage = Math.min(Math.floor(hoursElapsed / 2), 10);
-
-          const growthHistory = [...(plant.growthHistory || [{ stage: 0, timestamp: plant.purchasedAt }])];
-          const lastStage = growthHistory[growthHistory.length - 1]?.stage || 0;
-          if (newGrowthStage > lastStage) {
-            growthHistory.push({ stage: newGrowthStage, timestamp: now });
-          }
-
-          const carbonPerStage = {
-            'Tree': 2.5, 'Sunflower': 0.1, 'Rose': 0.15,
-            'Cactus': 0.2, 'Tulip': 0.1, 'Cherry Blossom': 1.0,
-          };
-          const baseCarbon = carbonPerStage[plant.type] || 0.1;
-          const carbonOffset = (baseCarbon * newGrowthStage) / 10;
-          const environmentalImpact = {
-            carbonOffset: parseFloat(carbonOffset.toFixed(2)),
-            oxygenProduced: parseFloat((carbonOffset * 0.73).toFixed(2)),
-            treesEquivalent: parseFloat((carbonOffset / 22).toFixed(4)),
-          };
-
-          return {
-            ...plant,
-            growthStage: newGrowthStage,
-            growthHistory,
-            environmentalImpact,
-          };
-        });
-        savePlants(updatedPlants);
-        return updatedPlants;
-      });
-    }, 60000);
-
-    return () => clearInterval(interval);
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.uid]);
 
   const loadPlants = async () => {
+    if (!isSupabaseConfigured || !user) {
+      setIsLoading(false);
+      return;
+    }
+    setIsLoading(true);
     try {
-      const storedPlants = await AsyncStorage.getItem('plants');
-      if (storedPlants) {
-        const parsedPlants = JSON.parse(storedPlants);
-        // Update growth based on time elapsed and ensure all new fields exist
-        const updatedPlants = parsedPlants.map(plant => {
-          const now = Date.now();
-          const purchasedAt = plant.purchasedAt || now;
-          const elapsed = now - purchasedAt;
-          const hoursElapsed = elapsed / (1000 * 60 * 60);
-          const growthStage = Math.min(Math.floor(hoursElapsed / 2), 10);
+      const { data, error } = await supabase
+        .from('plants')
+        .select('*')
+        .eq('user_id', user.uid)
+        .order('created_at', { ascending: true });
 
-          // Ensure backward compatibility with old plant data
-          const plantWithDefaults = {
-            ...plant,
-            purchasedAt,
-            location: plant.location || null,
-            photos: plant.photos || [],
-            healthMetrics: plant.healthMetrics || {
-              water: 100,
-              sunlight: 100,
-              care: 100,
-              lastWatered: purchasedAt,
-              lastSunlight: purchasedAt,
-              lastCared: purchasedAt,
-            },
-            environmentalImpact: plant.environmentalImpact || {
-              carbonOffset: 0,
-              oxygenProduced: 0,
-              treesEquivalent: 0.01,
-            },
-            growthHistory: plant.growthHistory || [{ stage: 0, timestamp: purchasedAt }],
-          };
+      if (error) throw error;
 
-          // Update environmental impact
-          const environmentalImpact = updateEnvironmentalImpact({ ...plantWithDefaults, growthStage });
+      const now = Date.now();
+      const loaded = (data || []).map(rowToPlant).map((plant) => recomputeGrowth(plant, now));
 
-          return {
-            ...plantWithDefaults,
-            growthStage,
-            environmentalImpact,
-          };
-        });
-        setPlants(updatedPlants);
-        savePlants(updatedPlants);
-      }
+      setPlants(loaded.map(({ changed, ...plant }) => plant));
+
+      // persist any growth-stage catch-up from time elapsed while offline
+      await Promise.all(
+        loaded.filter((p) => p.changed).map(({ changed, ...plant }) => persistPlant(plant))
+      );
     } catch (error) {
       console.error('Error loading plants:', error);
     } finally {
@@ -140,52 +143,39 @@ export const PlantProvider = ({ children }) => {
     }
   };
 
-  const savePlants = async (plantsToSave) => {
-    try {
-      await AsyncStorage.setItem('plants', JSON.stringify(plantsToSave));
-    } catch (error) {
-      console.error('Error saving plants:', error);
-    }
-  };
+  // Update plant growth every minute
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const now = Date.now();
+      const recomputed = plantsRef.current.map((plant) => recomputeGrowth(plant, now));
+      const toPersist = recomputed.filter((p) => p.changed);
+      setPlants(recomputed.map(({ changed, ...plant }) => plant));
+      toPersist.forEach(({ changed, ...plant }) => persistPlant(plant));
+    }, 60000);
+
+    return () => clearInterval(interval);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.uid]);
 
   const updatePlantGrowth = () => {
-    setPlants(prevPlants => {
-      const now = Date.now();
-      const updatedPlants = prevPlants.map(plant => {
-        const elapsed = now - (plant.purchasedAt || now);
-        const hoursElapsed = elapsed / (1000 * 60 * 60);
-        const newGrowthStage = Math.min(Math.floor(hoursElapsed / 2), 10);
-
-        const growthHistory = [...(plant.growthHistory || [{ stage: 0, timestamp: plant.purchasedAt }])];
-        const lastStage = growthHistory[growthHistory.length - 1]?.stage || 0;
-        if (newGrowthStage > lastStage) {
-          growthHistory.push({ stage: newGrowthStage, timestamp: now });
-        }
-
-        const environmentalImpact = updateEnvironmentalImpact({ ...plant, growthStage: newGrowthStage });
-
-        return {
-          ...plant,
-          growthStage: newGrowthStage,
-          growthHistory,
-          environmentalImpact,
-        };
-      });
-      savePlants(updatedPlants);
-      return updatedPlants;
-    });
+    const now = Date.now();
+    const recomputed = plantsRef.current.map((plant) => recomputeGrowth(plant, now));
+    const toPersist = recomputed.filter((p) => p.changed);
+    setPlants(recomputed.map(({ changed, ...plant }) => plant));
+    toPersist.forEach(({ changed, ...plant }) => persistPlant(plant));
   };
 
   const addPlant = async (plantType, color, location = null) => {
     const newPlant = {
-      id: Date.now().toString(),
+      id: undefined,
       type: plantType,
-      color: color,
+      color,
       purchasedAt: Date.now(),
       growthStage: 0,
       name: `${plantType} #${plants.length + 1}`,
-      location: location || null, // { latitude, longitude, address }
-      photos: [], // Array of { uri, timestamp, growthStage }
+      location: location || null,
+      photos: [],
+      aiInsights: [],
       healthMetrics: {
         water: 100,
         sunlight: 100,
@@ -194,30 +184,39 @@ export const PlantProvider = ({ children }) => {
         lastSunlight: Date.now(),
         lastCared: Date.now(),
       },
-      environmentalImpact: {
-        carbonOffset: 0, // kg CO2
-        oxygenProduced: 0, // kg
-        treesEquivalent: 0.01, // fraction of a tree
-      },
-      growthHistory: [{ stage: 0, timestamp: Date.now() }], // Timeline data
+      environmentalImpact: { carbonOffset: 0, oxygenProduced: 0, treesEquivalent: 0.01 },
+      growthHistory: [{ stage: 0, timestamp: Date.now() }],
     };
-    const updatedPlants = [...plants, newPlant];
-    setPlants(updatedPlants);
+
+    if (!isSupabaseConfigured || !user) {
+      const localPlant = { ...newPlant, id: Date.now().toString() };
+      setPlants((prev) => [...prev, localPlant]);
+      return localPlant;
+    }
+
     try {
-      await savePlants(updatedPlants);
+      const { id, ...row } = plantToRow(newPlant, user.uid);
+      const { data, error } = await supabase.from('plants').insert(row).select().single();
+      if (error) throw error;
+      const inserted = rowToPlant(data);
+      setPlants((prev) => [...prev, inserted]);
+      return inserted;
     } catch (error) {
       console.error('Failed to persist new plant:', error);
+      const localPlant = { ...newPlant, id: Date.now().toString() };
+      setPlants((prev) => [...prev, localPlant]);
+      return localPlant;
     }
-    return newPlant;
   };
 
   const METRIC_TIMESTAMP_KEYS = { water: 'lastWatered', sunlight: 'lastSunlight', care: 'lastCared' };
 
   const updatePlantHealth = async (plantId, metric, value) => {
     const timestampKey = METRIC_TIMESTAMP_KEYS[metric];
-    const updatedPlants = plants.map(plant => {
+    let updatedPlant;
+    const updatedPlants = plants.map((plant) => {
       if (plant.id === plantId) {
-        return {
+        updatedPlant = {
           ...plant,
           healthMetrics: {
             ...plant.healthMetrics,
@@ -225,44 +224,35 @@ export const PlantProvider = ({ children }) => {
             [timestampKey]: Date.now(),
           },
         };
+        return updatedPlant;
       }
       return plant;
     });
     setPlants(updatedPlants);
-    try {
-      await savePlants(updatedPlants);
-    } catch (error) {
-      console.error('Error saving health update:', error);
-    }
+    if (updatedPlant) await persistPlant(updatedPlant);
   };
 
   const addPlantPhoto = async (plantId, photoUri) => {
-    const updatedPlants = plants.map(plant => {
+    let updatedPlant;
+    const updatedPlants = plants.map((plant) => {
       if (plant.id === plantId) {
-        const newPhoto = {
-          uri: photoUri,
-          timestamp: Date.now(),
-          growthStage: plant.growthStage,
-        };
-        return {
-          ...plant,
-          photos: [...(plant.photos || []), newPhoto],
-        };
+        const newPhoto = { uri: photoUri, timestamp: Date.now(), growthStage: plant.growthStage };
+        updatedPlant = { ...plant, photos: [...(plant.photos || []), newPhoto] };
+        return updatedPlant;
       }
       return plant;
     });
     setPlants(updatedPlants);
-    try {
-      await savePlants(updatedPlants);
-    } catch (error) {
-      console.error('Error saving photo:', error);
-    }
+    if (updatedPlant) await persistPlant(updatedPlant);
   };
 
   const deletePlant = async (plantId) => {
-    const updatedPlants = plants.filter(plant => plant.id !== plantId);
+    const updatedPlants = plants.filter((plant) => plant.id !== plantId);
     setPlants(updatedPlants);
-    await savePlants(updatedPlants);
+    if (isSupabaseConfigured && user) {
+      const { error } = await supabase.from('plants').delete().eq('id', plantId);
+      if (error) console.error('Error deleting plant:', error);
+    }
   };
 
   const value = {
@@ -276,10 +266,5 @@ export const PlantProvider = ({ children }) => {
     updateEnvironmentalImpact,
   };
 
-  return (
-    <PlantContext.Provider value={value}>
-      {children}
-    </PlantContext.Provider>
-  );
+  return <PlantContext.Provider value={value}>{children}</PlantContext.Provider>;
 };
-

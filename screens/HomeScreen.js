@@ -20,11 +20,14 @@ import Animated, {
 import { LinearGradient } from 'expo-linear-gradient';
 import { usePlants } from '../context/PlantContext';
 import { useAuth } from '../context/AuthContext';
+import { useTheme } from '../context/ThemeContext';
 import PlantCard from '../components/PlantCard';
 
 export default function HomeScreen({ navigation }) {
   const { plants, isLoading } = usePlants();
   const { user, logout } = useAuth();
+  const { theme } = useTheme();
+  const styles = createStyles(theme);
 
   const fabPulse = useSharedValue(1);
   const emptyAnim = useSharedValue(0);
@@ -102,19 +105,19 @@ export default function HomeScreen({ navigation }) {
         : 'My Plants 🌱',
       headerBackground: () => (
         <LinearGradient
-          colors={['#388E3C', '#4CAF50']}
+          colors={theme.mode === 'dark' ? [theme.colors.primaryDark, theme.colors.primary] : ['#388E3C', '#4CAF50']}
           start={[0, 0]}
           end={[1, 0]}
           style={StyleSheet.absoluteFill}
         />
       ),
     });
-  }, [user, navigation, handleLogout]);
+  }, [user, navigation, handleLogout, theme]);
 
   if (isLoading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#4CAF50" />
+        <ActivityIndicator size="large" color={theme.colors.primary} />
       </View>
     );
   }
@@ -159,10 +162,10 @@ export default function HomeScreen({ navigation }) {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F5F5F5',
+    backgroundColor: theme.colors.background,
   },
   loadingContainer: {
     flex: 1,
@@ -182,16 +185,16 @@ const styles = StyleSheet.create({
   emptyText: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#333',
+    color: theme.colors.text,
     marginBottom: 10,
   },
   emptySubtext: {
     fontSize: 16,
-    color: '#666',
+    color: theme.colors.textSecondary,
     marginBottom: 30,
   },
   buyButton: {
-    backgroundColor: '#4CAF50',
+    backgroundColor: theme.colors.primary,
     paddingHorizontal: 30,
     paddingVertical: 15,
     borderRadius: 25,
@@ -202,7 +205,7 @@ const styles = StyleSheet.create({
     shadowRadius: 3.84,
   },
   buyButtonText: {
-    color: '#fff',
+    color: theme.colors.textInverse,
     fontSize: 18,
     fontWeight: 'bold',
   },
@@ -222,7 +225,7 @@ const styles = StyleSheet.create({
     width: 60,
     height: 60,
     borderRadius: 30,
-    backgroundColor: '#4CAF50',
+    backgroundColor: theme.colors.primary,
     justifyContent: 'center',
     alignItems: 'center',
     elevation: 5,
@@ -232,7 +235,7 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
   },
   fabText: {
-    color: '#fff',
+    color: theme.colors.textInverse,
     fontSize: 30,
     fontWeight: 'bold',
   },
@@ -244,7 +247,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255, 255, 255, 0.2)',
   },
   logoutButtonText: {
-    color: '#fff',
+    color: theme.colors.textInverse,
     fontSize: 14,
     fontWeight: '600',
   },
