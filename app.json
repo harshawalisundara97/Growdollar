@@ -40,7 +40,9 @@
     "web": {
       "favicon": "./assets/favicon.png",
       "bundler": "webpack"
-    }
+    },
+    "plugins": [
+      "expo-localization"
+    ]
   }
 }
-
